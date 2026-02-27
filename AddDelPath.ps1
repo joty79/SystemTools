@@ -242,6 +242,24 @@ function Write-Separator {
     Write-Host ('─' * 56) -ForegroundColor $Color
 }
 
+function Wait-ForEnvPaneCloseKey {
+
+    Write-Host ''
+    Write-Host 'Press 3 to close this snapshot pane.' -ForegroundColor Yellow
+
+    while ($true) {
+        try {
+            $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+            if (($key.Character -eq '3') -or ($key.VirtualKeyCode -eq 51)) {
+                break
+            }
+        }
+        catch {
+            break
+        }
+    }
+}
+
 function Show-Status {
     param([Parameter(Mandatory)][string]$PathToCheck)
 
@@ -451,7 +469,8 @@ function Invoke-PathAction {
     param(
         [Parameter(Mandatory)][ValidateSet('Status', 'Add', 'Remove', 'Toggle')] [string]$RequestedAction,
         [Parameter(Mandatory)][string]$RequestedScope,
-        [Parameter(Mandatory)][string]$PathToUse
+        [Parameter(Mandatory)][string]$PathToUse,
+        [switch]$SkipStatusOutput
     )
 
     switch ($RequestedAction) {
@@ -462,13 +481,17 @@ function Invoke-PathAction {
             Assert-AdminForMachine -CurrentScope $RequestedScope
             Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse
             Broadcast-EnvironmentChange
-            Show-Status -PathToCheck $PathToUse
+            if (-not $SkipStatusOutput) {
+                Show-Status -PathToCheck $PathToUse
+            }
         }
         'Remove' {
             Assert-AdminForMachine -CurrentScope $RequestedScope
             Remove-PathEntry -CurrentScope $RequestedScope -PathToRemove $PathToUse
             Broadcast-EnvironmentChange
-            Show-Status -PathToCheck $PathToUse
+            if (-not $SkipStatusOutput) {
+                Show-Status -PathToCheck $PathToUse
+            }
         }
         'Toggle' {
             Assert-AdminForMachine -CurrentScope $RequestedScope
@@ -480,7 +503,9 @@ function Invoke-PathAction {
                 Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse
             }
             Broadcast-EnvironmentChange
-            Show-Status -PathToCheck $PathToUse
+            if (-not $SkipStatusOutput) {
+                Show-Status -PathToCheck $PathToUse
+            }
         }
     }
 }
@@ -566,7 +591,7 @@ function Ensure-MenuElevation {
 function Open-EnvSnapshotPane {
     param([Parameter(Mandatory)][string]$PathToUse)
 
-    # WT supports split panes; outside WT we show inline as fallback.
+    # WT supports split panes; outside WT we show inline.
     if (-not $env:WT_SESSION) {
         Show-EnvironmentSnapshot -PathToHighlight $PathToUse
         return
@@ -578,12 +603,12 @@ function Open-EnvSnapshotPane {
         '-V',
         '--title', 'ENV-Snapshot',
         'pwsh.exe',
-        '-NoExit',
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
         '-File', $PSCommandPath,
         '-Action', 'EnvView',
-        '-TargetPath', $PathToUse
+        '-TargetPath', $PathToUse,
+        '-NoPause'
     )
 
     Start-Process -FilePath 'wt.exe' -ArgumentList $argList | Out-Null
@@ -605,33 +630,38 @@ function Show-Menu {
         Write-Host ''
         Write-Host '[1] 🔁 Toggle User PATH' -ForegroundColor Green
         Write-Host '[2] 🔁 Toggle Machine PATH (Admin)' -ForegroundColor Magenta
-        Write-Host '[3] 🔍 Show PATH status' -ForegroundColor Cyan
-        Write-Host '[4] 🌿 Show full ENV snapshot (split pane in WT)' -ForegroundColor Cyan
-        Write-Host '[5] 💾 Export ENV snapshot (TXT + MD)' -ForegroundColor Cyan
+        Write-Host '[3] 🌿 Toggle full ENV snapshot (split pane in WT)' -ForegroundColor Yellow
+        Write-Host '[4] 💾 Export ENV snapshot (MD)' -ForegroundColor Cyan
         Write-Host '[0] Exit'
         Write-Host ''
 
         $choice = Read-Host 'Choose option'
         if ($choice -eq '0') { break }
+        # Option 3 is intentionally no-pause in main menu.
+        $shouldPause = ($choice -ne '3')
 
         try {
             switch ($choice) {
-                '1' { Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'User' -PathToUse $PathToUse }
+                '1' {
+                    Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'User' -PathToUse $PathToUse -SkipStatusOutput
+                }
                 '2' {
                     if (Test-IsAdministrator) {
-                        Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'Machine' -PathToUse $PathToUse
+                        Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'Machine' -PathToUse $PathToUse -SkipStatusOutput
                     }
                     else {
                         Invoke-ElevatedMachineAction -RequestedAction 'Toggle' -PathToUse $PathToUse
                     }
                 }
-                '3' { Show-Status -PathToCheck $PathToUse }
-                '4' { Open-EnvSnapshotPane -PathToUse $PathToUse }
-                '5' {
+                '3' {
+                    $shouldPause = $false
+                    Open-EnvSnapshotPane -PathToUse $PathToUse
+                }
+                '4' {
                     $desktop = [Environment]::GetFolderPath('Desktop')
                     $exportDir = Read-Host "Export directory (blank = $desktop)"
                     if ([string]::IsNullOrWhiteSpace($exportDir)) { $exportDir = $desktop }
-                    Export-EnvironmentSnapshot -Directory $exportDir -Format 'Both'
+                    Export-EnvironmentSnapshot -Directory $exportDir -Format 'Md'
                 }
                 default { Write-Host 'Invalid option.' -ForegroundColor Yellow }
             }
@@ -640,8 +670,10 @@ function Show-Menu {
             Write-Host $_.Exception.Message -ForegroundColor Red
         }
 
-        Write-Host ''
-        Read-Host 'Press Enter to continue'
+        if ($shouldPause) {
+            Write-Host ''
+            Read-Host 'Press Enter to continue'
+        }
     }
 }
 
@@ -669,13 +701,14 @@ switch ($Action) {
     }
     'EnvView' {
         Show-EnvironmentSnapshot -PathToHighlight $TargetPath
+        Wait-ForEnvPaneCloseKey
     }
     'EnvExport' {
         Export-EnvironmentSnapshot -Directory $OutputDirectory -Format $ExportFormat
     }
 }
 
-if (($Action -ne 'Menu') -and (-not $NoPause)) {
+if (($Action -notin @('Menu', 'EnvView')) -and (-not $NoPause)) {
     Write-Host ''
     Read-Host 'Press Enter to close'
 }

@@ -94,3 +94,84 @@
 - Guardrail/rule: For `Menu` action, run elevation check first and WT host bootstrap second (`Ensure-MenuElevation` -> `Ensure-MenuHostInWindowsTerminal`) to avoid duplicate startup windows.
 - Files affected: `AddDelPath.ps1`.
 - Validation/tests run: PowerShell parser validation; manual line-order verification in `switch ($Action)`.
+
+### Entry - 2026-02-27 (No-Flash Context Launch via VBS)
+
+- Date: 2026-02-27
+- Problem: Context launch still showed a short-lived console window before WT opened.
+- Root cause: Registry command invoked `pwsh.exe` directly, which created an intermediate visible console process.
+- Guardrail/rule: For context-menu launch UX, use `wscript.exe` launcher (`Launch-SystemToolsMenu.vbs`) and call `wt.exe` with `runas` directly from VBS to avoid console flash.
+- Files affected: `SystemToolsMenu.reg`, `Launch-SystemToolsMenu.vbs`.
+- Validation/tests run: Parser validation on `AddDelPath.ps1`; manual verification of registry command and VBS launcher arguments.
+
+### Entry - 2026-02-27 (Toggle UX Fast-Refresh)
+
+- Date: 2026-02-27
+- Problem: Toggle actions showed duplicate status block and required extra `Press Enter` even though main menu refresh already displays new state.
+- Root cause: `Invoke-PathAction` always printed post-action status and menu loop always paused.
+- Guardrail/rule: In menu toggle flows, call `Invoke-PathAction` with `-SkipStatusOutput` and skip pause, so UI returns directly to refreshed main menu.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification of toggle menu flow and pause gating.
+
+### Entry - 2026-02-27 (Option 4 Pane Toggle)
+
+- Date: 2026-02-27
+- Problem: ENV snapshot pane opened with option `4` but required manual close via keyboard/window controls.
+- Root cause: Snapshot pane had no control channel from main menu action.
+- Guardrail/rule: Option `4` is now true toggle: first press writes active state + token and opens pane; second press flips state to close signal. `EnvView` pane waits on token/state file and exits automatically when toggle is pressed again.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; verification of state/token functions and option-4 control flow wiring.
+
+### Entry - 2026-02-27 (Option 4 Close From Pane Focus)
+
+- Date: 2026-02-27
+- Problem: When focus moved to snapshot pane, pressing `4` in the pane did not close it and pane could drop to shell prompt after script exit.
+- Root cause: Pane close signal only came from main menu option `4`; split-pane launch kept `-NoExit`, so script completion left interactive prompt.
+- Guardrail/rule: In `EnvView`, accept key `4` directly via `RawUI.ReadKey` to set close signal; launch snapshot pane without `-NoExit` so pane closes when script exits.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification for key-read loop and split-pane launch args.
+
+### Entry - 2026-02-27 (Menu Simplify: Remove Option 3 / No Pause on 4)
+
+- Date: 2026-02-27
+- Problem: `Show PATH status` was redundant with always-refreshed main menu, and option `4` still showed unnecessary pause flow.
+- Root cause: Legacy menu item retained explicit status action; pane launch path still allowed post-action pause prompt.
+- Guardrail/rule: Remove menu option `3`; keep option `4` as toggle-only action with no menu pause, label it explicitly as toggle, and force `EnvView` pane launches with `-NoPause`.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification of menu options and final pause condition.
+
+### Entry - 2026-02-27 (Menu Reorder: ENV Toggle = 3)
+
+- Date: 2026-02-27
+- Problem: Menu numbering had a gap and ENV toggle needed to be key `3` with no extra confirmation flow.
+- Root cause: Previous simplification removed old option `3` but kept ENV toggle on `4`.
+- Guardrail/rule: Keep menu order contiguous (`1`,`2`,`3`,`4`), map ENV toggle to `3`, and keep no-pause behavior for this action; snapshot pane close hint/key must match (`Press 3`).
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification of labels, switch cases, and pane key handler.
+
+### Entry - 2026-02-27 (No-Pause Reliability For Option 3)
+
+- Date: 2026-02-27
+- Problem: Main menu could still show `Press Enter to continue` after option `3` in some control paths.
+- Root cause: Pause flag defaulted to true and depended on execution order inside case block.
+- Guardrail/rule: Set pause behavior from choice preemptively (`$shouldPause = ($choice -ne '3')`) so option `3` is always no-pause.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification of pause assignment and option `3` branch.
+
+### Entry - 2026-02-27 (Pause Policy Finalization)
+
+- Date: 2026-02-27
+- Problem: Option `3` behavior was still perceived inconsistent and snapshot pane could still show close prompt in some paths.
+- Root cause: Mixed historical pause overrides for options `1`/`2` plus conditional end-of-script pause tied to token presence.
+- Guardrail/rule: Keep main menu pause policy explicit: only option `3` is no-pause, others keep confirmation pause. For `EnvView` action, never show final `Press Enter to close` prompt.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification of case branches and final pause condition.
+
+### Entry - 2026-02-27 (Simplify ENV Pane Control Model)
+
+- Date: 2026-02-27
+- Problem: Stateful pane-toggle logic became hard to reason about and still caused inconsistent user experience.
+- Root cause: Added token/state-file coordination introduced unnecessary complexity for a simple open/close interaction.
+- Guardrail/rule: Keep ENV snapshot control stateless: menu option `3` opens snapshot pane; inside pane, key `3` closes it; no state files/tokens for pane lifecycle.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; line-level verification that state/token references were removed.
