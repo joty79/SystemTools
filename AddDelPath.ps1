@@ -649,8 +649,8 @@ $TargetPath = [System.IO.Path]::GetFullPath($TargetPath)
 
 switch ($Action) {
     'Menu' {
-        if (Ensure-MenuHostInWindowsTerminal -PathToUse $TargetPath) {
-            if (Ensure-MenuElevation -PathToUse $TargetPath) {
+        if (Ensure-MenuElevation -PathToUse $TargetPath) {
+            if (Ensure-MenuHostInWindowsTerminal -PathToUse $TargetPath) {
                 Show-Menu -PathToUse $TargetPath
             }
         }

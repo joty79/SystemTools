@@ -85,3 +85,12 @@
 - Guardrail/rule: Keep registry command as `pwsh.exe -File AddDelPath.ps1 -Action Menu`; bootstrap to WT from script (`Ensure-MenuHostInWindowsTerminal`) with loop-prevention switch (`-SkipWtBootstrap`).
 - Files affected: `AddDelPath.ps1`, `SystemToolsMenu.reg`.
 - Validation/tests run: PowerShell parser validation; manual verification of updated registry command and bootstrap wiring.
+
+### Entry - 2026-02-27 (Single-Window Launch Order)
+
+- Date: 2026-02-27
+- Problem: Launch flow could open two windows at startup (non-admin WT then elevated WT).
+- Root cause: Menu bootstrapped to WT before running elevation check.
+- Guardrail/rule: For `Menu` action, run elevation check first and WT host bootstrap second (`Ensure-MenuElevation` -> `Ensure-MenuHostInWindowsTerminal`) to avoid duplicate startup windows.
+- Files affected: `AddDelPath.ps1`.
+- Validation/tests run: PowerShell parser validation; manual line-order verification in `switch ($Action)`.
