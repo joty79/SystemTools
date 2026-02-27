@@ -1,0 +1,19 @@
+Windows Registry Editor Version 5.00
+
+; Cleanup existing System Tools keys before re-applying
+[-HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
+[-HKEY_CLASSES_ROOT\Directory\shell\SystemTools]
+
+; Parent menu
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
+"MUIVerb"="System Tools"
+"SubCommands"=""
+"Icon"="imageres.dll,-109"
+
+; Submenu: PATH manager
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager]
+"MUIVerb"="Manage Folder PATH..."
+"Icon"="imageres.dll,-5302"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager\command]
+@="wt.exe -w 0 nt --title \"System Tools - PATH\" pwsh.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File \"D:\\Users\\joty79\\scripts\\SystemTools\\AddDelPath.ps1\" -Action Menu -TargetPath \"%1\""

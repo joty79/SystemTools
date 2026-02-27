@@ -1,0 +1,6 @@
+# Generated environment snapshots
+Env-Readable-*.txt
+Env-Readable-*.md
+
+# Local test artifacts
+__toggle_test/
