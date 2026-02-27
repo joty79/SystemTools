@@ -2,7 +2,9 @@ Windows Registry Editor Version 5.00
 
 ; Cleanup existing System Tools keys before re-applying
 [-HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
+[-HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
 [-HKEY_CLASSES_ROOT\Directory\shell\SystemTools]
+[-HKEY_CLASSES_ROOT\Directory\Background\shell\SystemTools]
 
 ; Parent menu
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
@@ -17,3 +19,17 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%1\""
+
+; Parent menu (folder background)
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
+"MUIVerb"="System Tools"
+"SubCommands"=""
+"Icon"="imageres.dll,-109"
+
+; Submenu: PATH manager (folder background)
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\PathManager]
+"MUIVerb"="Manage Folder PATH..."
+"Icon"="imageres.dll,-5302"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\PathManager\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%V\""

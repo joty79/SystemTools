@@ -175,3 +175,12 @@
 - Guardrail/rule: Keep ENV snapshot control stateless: menu option `3` opens snapshot pane; inside pane, key `3` closes it; no state files/tokens for pane lifecycle.
 - Files affected: `AddDelPath.ps1`.
 - Validation/tests run: PowerShell parser validation; line-level verification that state/token references were removed.
+
+### Entry - 2026-02-27 (Directory Background Support)
+
+- Date: 2026-02-27
+- Problem: `System Tools` menu was available on folder items but not when right-clicking folder background.
+- Root cause: Registry integration only targeted `Directory\shell\SystemTools`.
+- Guardrail/rule: Mirror menu under `Directory\Background\shell\SystemTools` and use `%V` in command for background path context; keep cleanup for both `HKCU\Software\Classes` and `HKCR` variants.
+- Files affected: `SystemToolsMenu.reg`.
+- Validation/tests run: Manual review of registry keys/commands and cleanup coverage.
