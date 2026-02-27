@@ -16,4 +16,4 @@ Windows Registry Editor Version 5.00
 "Icon"="imageres.dll,-5302"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager\command]
-@="wt.exe -w 0 nt --title \"System Tools - PATH\" pwsh.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File \"D:\\Users\\joty79\\scripts\\SystemTools\\AddDelPath.ps1\" -Action Menu -TargetPath \"%1\""
+@="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"D:\\Users\\joty79\\scripts\\SystemTools\\AddDelPath.ps1\" -Action Menu -TargetPath \"%1\""

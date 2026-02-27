@@ -14,6 +14,8 @@ param(
     [ValidateSet('Txt', 'Md', 'Both')]
     [string]$ExportFormat = 'Both',
 
+    [switch]$SkipWtBootstrap,
+
     [switch]$NoPause
 )
 
@@ -483,26 +485,76 @@ function Invoke-PathAction {
     }
 }
 
-function Ensure-MenuElevation {
+function Ensure-MenuHostInWindowsTerminal {
     param([Parameter(Mandatory)][string]$PathToUse)
 
-    if (Test-IsAdministrator) { return $true }
+    if ($SkipWtBootstrap -or $env:WT_SESSION) { return $true }
 
-    $pwshCmd = Get-Command pwsh.exe -ErrorAction SilentlyContinue
-    $pwshExe = if ($null -ne $pwshCmd) { $pwshCmd.Source } else { Join-Path $PSHOME 'pwsh.exe' }
+    $wtCmd = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($null -eq $wtCmd) {
+        Write-Host 'wt.exe not found. Continuing in current PowerShell host.' -ForegroundColor Yellow
+        return $true
+    }
 
     $argList = @(
+        '-w', '0',
+        'new-tab',
+        '--title', 'System-Tools-PATH',
+        'pwsh.exe',
+        '-NoExit',
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
         '-File', $PSCommandPath,
         '-Action', 'Menu',
         '-TargetPath', $PathToUse,
+        '-SkipWtBootstrap',
         '-NoPause'
     )
 
+    Start-Process -FilePath $wtCmd.Source -ArgumentList $argList | Out-Null
+    return $false
+}
+
+function Ensure-MenuElevation {
+    param([Parameter(Mandatory)][string]$PathToUse)
+
+    if (Test-IsAdministrator) { return $true }
+
+    $wtCmd = Get-Command wt.exe -ErrorAction SilentlyContinue
+    $pwshCmd = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    $pwshExe = if ($null -ne $pwshCmd) { $pwshCmd.Source } else { Join-Path $PSHOME 'pwsh.exe' }
+
     Write-Host 'Requesting admin elevation for full PATH control...' -ForegroundColor Yellow
     try {
-        Start-Process -FilePath $pwshExe -Verb RunAs -ArgumentList $argList | Out-Null
+        if ($null -ne $wtCmd) {
+            $wtArgs = @(
+                '-w', '0',
+                'new-tab',
+                '--title', 'System-Tools-PATH-Admin',
+                'pwsh.exe',
+                '-NoExit',
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', $PSCommandPath,
+                '-Action', 'Menu',
+                '-TargetPath', $PathToUse,
+                '-SkipWtBootstrap',
+                '-NoPause'
+            )
+            Start-Process -FilePath $wtCmd.Source -Verb RunAs -ArgumentList $wtArgs | Out-Null
+        }
+        else {
+            $argList = @(
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', $PSCommandPath,
+                '-Action', 'Menu',
+                '-TargetPath', $PathToUse,
+                '-SkipWtBootstrap',
+                '-NoPause'
+            )
+            Start-Process -FilePath $pwshExe -Verb RunAs -ArgumentList $argList | Out-Null
+        }
         return $false
     }
     catch {
@@ -597,8 +649,10 @@ $TargetPath = [System.IO.Path]::GetFullPath($TargetPath)
 
 switch ($Action) {
     'Menu' {
-        if (Ensure-MenuElevation -PathToUse $TargetPath) {
-            Show-Menu -PathToUse $TargetPath
+        if (Ensure-MenuHostInWindowsTerminal -PathToUse $TargetPath) {
+            if (Ensure-MenuElevation -PathToUse $TargetPath) {
+                Show-Menu -PathToUse $TargetPath
+            }
         }
     }
     'Status' {

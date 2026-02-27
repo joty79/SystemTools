@@ -76,3 +76,12 @@
 - Guardrail/rule: When returning mutable .NET collections from functions, return with no-enumeration (e.g. `return ,$list`); for this tool, relaunch `Menu` elevated by default and continue standard only if elevation is canceled.
 - Files affected: `AddDelPath.ps1`.
 - Validation/tests run: PowerShell parser validation; toggle add/remove smoke test on temp folder path.
+
+### Entry - 2026-02-27 (pwsh Entry + WT Bootstrap)
+
+- Date: 2026-02-27
+- Problem: Desired launcher behavior was "run from PowerShell, then use WT host".
+- Root cause: Context menu command invoked `wt.exe` directly instead of routing through the main `ps1` entrypoint.
+- Guardrail/rule: Keep registry command as `pwsh.exe -File AddDelPath.ps1 -Action Menu`; bootstrap to WT from script (`Ensure-MenuHostInWindowsTerminal`) with loop-prevention switch (`-SkipWtBootstrap`).
+- Files affected: `AddDelPath.ps1`, `SystemToolsMenu.reg`.
+- Validation/tests run: PowerShell parser validation; manual verification of updated registry command and bootstrap wiring.
