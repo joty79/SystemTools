@@ -260,3 +260,21 @@
 - Guardrail/rule: Every standalone `SystemTools` utility intended for manual use should get the same menu integration pattern: hidden VBS launcher plus mirrored `Directory\shell` and `Directory\Background\shell` entries.
 - Files affected: `Launch-RefreshShell.vbs`, `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: PowerShell parser validation for `Install-SystemToolsMenu.ps1`; manual review of registry command wiring.
+
+### Entry - 2026-02-28 (PATH Menu Exit Should Close WT Tab)
+
+- Date: 2026-02-28
+- Problem: Choosing `0` in `AddDelPath.ps1` exited the menu but left an interactive `pwsh` prompt open in Windows Terminal.
+- Root cause: WT launch paths used `pwsh.exe -NoExit`, so script termination dropped the user into a shell instead of closing the tab.
+- Guardrail/rule: For menu-style WT launchers that should fully exit on option `0`, do not use `-NoExit` in VBS bootstrap or internal WT relaunch/elevation paths.
+- Files affected: `Launch-SystemToolsMenu.vbs`, `AddDelPath.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `AddDelPath.ps1`; manual code-path review of WT launch arguments.
+
+### Entry - 2026-02-28 (PATH Menu Exit Should Hand Off To Interactive pwsh)
+
+- Date: 2026-02-28
+- Problem: Closing the PATH menu with option `0` should leave the user in interactive `pwsh` with their normal shell/profile experience, not close Windows Terminal entirely.
+- Root cause: Removing `-NoExit` closed the WT tab/window, and `-NoProfile` prevented normal interactive `pwsh` experience (`oh-my-posh`, prompt customizations, etc.) after menu exit.
+- Guardrail/rule: For the PATH Manager menu host only, use `pwsh.exe -NoExit` and allow the normal profile to load so option `0` hands off to an interactive `pwsh` session instead of closing WT.
+- Files affected: `Launch-SystemToolsMenu.vbs`, `AddDelPath.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `AddDelPath.ps1`; manual review of WT launch arguments.
