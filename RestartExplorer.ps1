@@ -36,28 +36,25 @@ function Restart-Explorer {
     param([string]$PathToUse)
 
     Write-Host ''
-    Write-Host 'Restarting Explorer...' -ForegroundColor Yellow
+    Write-Host 'Stopping Explorer...' -ForegroundColor Yellow
 
-    foreach ($process in (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
+    $runningExplorer = @(Get-Process -Name explorer -ErrorAction SilentlyContinue)
+    foreach ($process in $runningExplorer) {
         try {
             Stop-Process -Id $process.Id -Force -ErrorAction Stop
-            Wait-Process -Id $process.Id -Timeout 5 -ErrorAction SilentlyContinue
         }
         catch {
         }
     }
 
-    Start-Sleep -Milliseconds 500
-
-    $pathArg = Resolve-ExplorerPathArgument -PathToUse $PathToUse
-    if ([string]::IsNullOrWhiteSpace($pathArg)) {
-        Start-Process -FilePath 'explorer.exe'
-        Write-Host 'Explorer restarted.' -ForegroundColor Green
-        return
+    try {
+        Wait-Process -Name explorer -Timeout 5 -ErrorAction SilentlyContinue
+    }
+    catch {
     }
 
-    Start-Process -FilePath 'explorer.exe' -ArgumentList $pathArg
-    Write-Host "Explorer restarted at: $pathArg" -ForegroundColor Green
+    Start-Sleep -Milliseconds 500
+    Write-Host 'Explorer stopped. No folder window was reopened.' -ForegroundColor Green
 }
 
 Restart-Explorer -PathToUse $TargetPath

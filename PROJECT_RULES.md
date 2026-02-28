@@ -202,3 +202,30 @@
 - Guardrail/rule: In `SystemTools`, `Restart Explorer` must be pure restart-only: no `RefreshShell`, no hidden/system visibility toggles, no Explorer view-state hacks. Preserve only optional reopen-at-target-folder behavior.
 - Files affected: `RestartExplorer.ps1`, `Launch-RestartExplorer.vbs`, `SystemToolsMenu.reg`, `PROJECT_RULES.md`.
 - Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`; manual review of registry/VBS command wiring.
+
+### Entry - 2026-02-28 (Restart Explorer Wait-For-Exit)
+
+- Date: 2026-02-28
+- Problem: Immediate relaunch after per-process kill could race with Explorer shutdown and may contribute to transient extra Explorer instances during restart.
+- Root cause: Relaunch happened after individual `Stop-Process` calls without first waiting for the full `explorer.exe` process set to disappear from the process table.
+- Guardrail/rule: For Explorer relaunch, stop all current `explorer.exe` processes first, then wait on `Wait-Process -Name explorer` before starting the new instance.
+- Files affected: `RestartExplorer.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`.
+
+### Entry - 2026-02-28 (Delayed Folder Reopen After Shell Restart)
+
+- Date: 2026-02-28
+- Problem: Reopening the target folder immediately during Explorer restart may correlate with transient extra Explorer instances.
+- Root cause: Folder-open request was launched as part of the same immediate relaunch step instead of after the primary shell had time to stabilize.
+- Guardrail/rule: Resolve/save `TargetPath` first, restart the base shell with plain `explorer.exe`, wait briefly, then reopen the saved folder path as a second step.
+- Files affected: `RestartExplorer.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`.
+
+### Entry - 2026-02-28 (No Quick Access / No Target Reopen)
+
+- Date: 2026-02-28
+- Problem: Any scripted Explorer relaunch path still opened a `Quick Access` window and target-folder reopen correlated with transient zombie Explorer behavior.
+- Root cause: `Start-Process explorer.exe` opens a File Explorer window, and a second folder-open launch adds another Explorer activation path.
+- Guardrail/rule: For the default `Restart Explorer` utility, do not script any Explorer relaunch or target-folder reopen. Keep it as Explorer stop-only to avoid `Quick Access` and extra folder windows.
+- Files affected: `RestartExplorer.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`.
