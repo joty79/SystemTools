@@ -16,9 +16,14 @@ $legacyKeys = @(
 
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
 $toolScript = Join-Path $scriptRoot 'AddDelPath.ps1'
+$restartScript = Join-Path $scriptRoot 'RestartExplorer.ps1'
 
 if (-not (Test-Path -LiteralPath $toolScript)) {
     throw "Missing required script: $toolScript"
+}
+
+if (-not (Test-Path -LiteralPath $restartScript)) {
+    throw "Missing required script: $restartScript"
 }
 
 function Reg-Run([string[]]$RegArgs, [switch]$IgnoreNotFound, [switch]$IgnoreAccessDenied) {
@@ -59,6 +64,11 @@ function Install-Menu {
     Add-Value -Key $toggleUserKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Toggle Folder in User PATH'
     Add-Value -Key $toggleUserKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5302'
     Add-Value -Key "$toggleUserKey\command" -Name '(default)' -Type 'REG_SZ' -Data "pwsh.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File `"$toolScript`" -Action Toggle -Scope User -TargetPath `"%1`""
+
+    $restartExplorerKey = "$baseKey\shell\RestartExplorer"
+    Add-Value -Key $restartExplorerKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'
+    Add-Value -Key $restartExplorerKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5358'
+    Add-Value -Key "$restartExplorerKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"%1`""
 
     Write-Host 'System Tools folder context menu installed.' -ForegroundColor Green
 }

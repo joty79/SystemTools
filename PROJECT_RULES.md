@@ -184,3 +184,21 @@
 - Guardrail/rule: Mirror menu under `Directory\Background\shell\SystemTools` and use `%V` in command for background path context; keep cleanup for both `HKCU\Software\Classes` and `HKCR` variants.
 - Files affected: `SystemToolsMenu.reg`.
 - Validation/tests run: Manual review of registry keys/commands and cleanup coverage.
+
+### Entry - 2026-02-28 (Restart Explorer Port)
+
+- Date: 2026-02-28
+- Problem: Need a PowerShell version of `Restart Explorer` from `RightClickTools` as a reusable `System Tools` script.
+- Root cause: Desired functionality existed only in external C# reference code, not as native `ps1` utility inside this repo.
+- Guardrail/rule: Port small utilities one-at-a-time from reference projects; for `Restart Explorer`, keep it standalone, call shell refresh first, then restart `explorer.exe`, and reopen Explorer at target folder when valid.
+- Files affected: `RestartExplorer.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation planned after script creation.
+
+### Entry - 2026-02-28 (Restart Explorer = Pure Restart Only)
+
+- Date: 2026-02-28
+- Problem: Reference `RightClickTools` implementation bundled `RefreshShell()` before Explorer restart and could surface hidden/system files unexpectedly.
+- Root cause: The external C# helper used a visibility-toggle refresh trick before killing and relaunching `explorer.exe`, which is riskier than needed for this repo's simpler restart action.
+- Guardrail/rule: In `SystemTools`, `Restart Explorer` must be pure restart-only: no `RefreshShell`, no hidden/system visibility toggles, no Explorer view-state hacks. Preserve only optional reopen-at-target-folder behavior.
+- Files affected: `RestartExplorer.ps1`, `Launch-RestartExplorer.vbs`, `SystemToolsMenu.reg`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`; manual review of registry/VBS command wiring.
