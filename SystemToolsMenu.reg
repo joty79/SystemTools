@@ -28,6 +28,14 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%1\""
 
+; Submenu: Refresh Shell
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell]
+"MUIVerb"="Refresh Shell"
+"Icon"="imageres.dll,-5308"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
+
 ; Parent menu (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
 "MUIVerb"="System Tools"
@@ -49,3 +57,11 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%V\""
+
+; Submenu: Refresh Shell (folder background)
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell]
+"MUIVerb"="Refresh Shell"
+"Icon"="imageres.dll,-5308"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""

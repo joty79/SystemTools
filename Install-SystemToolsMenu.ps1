@@ -17,6 +17,7 @@ $legacyKeys = @(
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
 $toolScript = Join-Path $scriptRoot 'AddDelPath.ps1'
 $restartScript = Join-Path $scriptRoot 'RestartExplorer.ps1'
+$refreshScript = Join-Path $scriptRoot 'RefreshShell.ps1'
 
 if (-not (Test-Path -LiteralPath $toolScript)) {
     throw "Missing required script: $toolScript"
@@ -24,6 +25,10 @@ if (-not (Test-Path -LiteralPath $toolScript)) {
 
 if (-not (Test-Path -LiteralPath $restartScript)) {
     throw "Missing required script: $restartScript"
+}
+
+if (-not (Test-Path -LiteralPath $refreshScript)) {
+    throw "Missing required script: $refreshScript"
 }
 
 function Reg-Run([string[]]$RegArgs, [switch]$IgnoreNotFound, [switch]$IgnoreAccessDenied) {
@@ -69,6 +74,11 @@ function Install-Menu {
     Add-Value -Key $restartExplorerKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'
     Add-Value -Key $restartExplorerKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5358'
     Add-Value -Key "$restartExplorerKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"%1`""
+
+    $refreshShellKey = "$baseKey\shell\RefreshShell"
+    Add-Value -Key $refreshShellKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Refresh Shell'
+    Add-Value -Key $refreshShellKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5308'
+    Add-Value -Key "$refreshShellKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
 
     Write-Host 'System Tools folder context menu installed.' -ForegroundColor Green
 }

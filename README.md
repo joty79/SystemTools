@@ -19,6 +19,7 @@
 |:-:|------|-------------|
 | 🔁 | **[Restart Explorer](#-restart-explorer)** | Kill & cleanly restart `explorer.exe` — reopens target folder without zombie processes |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
+| 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
 
 ---
 
@@ -128,6 +129,60 @@ Opens an interactive menu in Windows Terminal:
 
 ---
 
+## 🔄 Refresh Shell
+
+> Notify Windows to refresh shell state and environment variables — without restarting Explorer.
+
+### The Problem
+
+After changes to the registry, context menus, file associations, or environment variables:
+- New context menu entries don't appear until you restart Explorer
+- Apps don't see updated PATH or env variables until restarted
+- Full Explorer restart is overkill for a simple refresh
+
+### The Solution
+
+Refresh Shell sends **two native Windows broadcast signals** to force all apps to re-read their state:
+
+```
+SHChangeNotify(SHCNE_ASSOCCHANGED)  → Refreshes icons, associations, context menus
+WM_SETTINGCHANGE "ShellState"       → Refreshes shell UI state
+WM_SETTINGCHANGE "Environment"      → Refreshes environment variables (PATH, etc.)
+```
+
+No processes killed. No windows closed. Just signals.
+
+### When To Use
+
+| Scenario | Use Refresh Shell? |
+|----------|-------------------|
+| Added/removed a context menu entry | ✅ Yes |
+| Changed a file association | ✅ Yes |
+| Changed icon resources in registry | ✅ Yes |
+| Installed a new shell extension | ✅ Yes |
+| Changed PATH manually (outside AddDelPath) | ✅ Yes |
+| Need full Explorer restart | ❌ Use Restart Explorer |
+
+### Usage
+
+**From context menu** — right-click any folder → *System Tools* → *Refresh Shell*
+
+**From terminal:**
+
+```powershell
+# Refresh shell and environment
+.\RefreshShell.ps1
+
+# Silent (no pause)
+.\RefreshShell.ps1 -NoPause
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-NoPause` | `switch` | Off | Skip `Press Enter to close` prompt |
+
+---
+
 ## 📦 Installation
 
 ### Quick Setup (Registry)
@@ -164,10 +219,12 @@ Double-click `SystemToolsMenu.reg` to import directly.
 SystemTools/
 ├── AddDelPath.ps1                # PATH Manager — interactive menu + CLI
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
+├── RefreshShell.ps1              # Refresh Shell — broadcast refresh signals
 ├── Install-SystemToolsMenu.ps1   # Registry installer/uninstaller
 ├── SystemToolsMenu.reg           # Manual registry import (alternative)
 ├── Launch-SystemToolsMenu.vbs    # VBS launcher (no console flash)
 ├── Launch-RestartExplorer.vbs    # VBS launcher (no console flash)
+├── Launch-RefreshShell.vbs       # VBS launcher (no console flash)
 ├── PROJECT_RULES.md              # Decision log & guardrails
 └── README.md                     # You are here
 ```
@@ -194,6 +251,13 @@ When Explorer is killed, Windows **automatically** restarts the shell process vi
 <summary><b>How does PATH broadcast work?</b></summary>
 
 After modifying PATH, the script calls `SendMessageTimeout` with `WM_SETTINGCHANGE` to notify all running applications that environment variables have changed. This means you don't need to restart apps to pick up PATH changes.
+
+</details>
+
+<details>
+<summary><b>What's the difference between Refresh Shell and Restart Explorer?</b></summary>
+
+**Refresh Shell** sends lightweight notification signals (`SHChangeNotify` + `WM_SETTINGCHANGE`) — no processes are killed or restarted. It's enough for context menu, association, and environment changes. **Restart Explorer** kills and restarts the entire `explorer.exe` process — needed when the shell itself is frozen or misbehaving.
 
 </details>
 

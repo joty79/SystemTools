@@ -238,3 +238,25 @@
 - Guardrail/rule: Never use `Start-Process explorer.exe` to restart the shell. Instead: (1) kill Explorer, (2) wait for Windows auto-restart via polling loop, (3) wait 2s for shell stabilization, (4) reopen folder via `Shell.Application` COM (`New-Object -ComObject Shell.Application; $shell.Open($path)`). The COM method reuses the existing shell process and does not spawn an extra `explorer.exe`. Use `-ReopenFolder` switch as opt-in.
 - Files affected: `RestartExplorer.ps1`, `Launch-RestartExplorer.vbs`, `PROJECT_RULES.md`.
 - Validation/tests run: Manual context-menu test confirmed: 1 `explorer.exe` process, folder reopened, zero zombie processes.
+
+### TODO
+
+- Reuse the COM-based Explorer folder-reopen flow in future installer/template workflows so context-menu install/update actions can restart Explorer without losing the user's current folder context.
+
+### Entry - 2026-02-28 (Refresh Shell = Notify Only)
+
+- Date: 2026-02-28
+- Problem: Need a `Refresh Shell` utility without the risky hidden/system visibility toggle trick used by the external `RightClickTools` reference.
+- Root cause: The reference implementation bundled shell notification with temporary Explorer visibility-state changes, which is more invasive than desired for this repo.
+- Guardrail/rule: Keep `Refresh Shell` minimal: send shell refresh notifications only (`SHChangeNotify` + `WM_SETTINGCHANGE` broadcast) with no Explorer restart, no hidden/system file toggles, and no icon-cache rebuild behavior.
+- Files affected: `RefreshShell.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `RefreshShell.ps1`.
+
+### Entry - 2026-02-28 (Refresh Shell Menu Wiring)
+
+- Date: 2026-02-28
+- Problem: `Refresh Shell` existed as a standalone script but was not accessible from the `System Tools` folder/background context menu.
+- Root cause: Registry menu wiring and installer sync only exposed PATH Manager and Restart Explorer entries.
+- Guardrail/rule: Every standalone `SystemTools` utility intended for manual use should get the same menu integration pattern: hidden VBS launcher plus mirrored `Directory\shell` and `Directory\Background\shell` entries.
+- Files affected: `Launch-RefreshShell.vbs`, `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `Install-SystemToolsMenu.ps1`; manual review of registry command wiring.
