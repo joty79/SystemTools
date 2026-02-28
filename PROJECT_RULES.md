@@ -229,3 +229,12 @@
 - Guardrail/rule: For the default `Restart Explorer` utility, do not script any Explorer relaunch or target-folder reopen. Keep it as Explorer stop-only to avoid `Quick Access` and extra folder windows.
 - Files affected: `RestartExplorer.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: PowerShell parser validation for `RestartExplorer.ps1`.
+
+### Entry - 2026-02-28 (COM-Based Folder Reopen — Zombie Fix)
+
+- Date: 2026-02-28
+- Problem: `Start-Process explorer.exe` after kill always created a second/zombie Explorer process because Windows auto-restarts the shell via `winlogon`, making any scripted `Start-Process` redundant and additive.
+- Root cause: Windows auto-respawns the shell `explorer.exe` after termination. `Start-Process explorer.exe` (with or without path) creates a SECOND process on top of the auto-respawned one. This second process is the "zombie".
+- Guardrail/rule: Never use `Start-Process explorer.exe` to restart the shell. Instead: (1) kill Explorer, (2) wait for Windows auto-restart via polling loop, (3) wait 2s for shell stabilization, (4) reopen folder via `Shell.Application` COM (`New-Object -ComObject Shell.Application; $shell.Open($path)`). The COM method reuses the existing shell process and does not spawn an extra `explorer.exe`. Use `-ReopenFolder` switch as opt-in.
+- Files affected: `RestartExplorer.ps1`, `Launch-RestartExplorer.vbs`, `PROJECT_RULES.md`.
+- Validation/tests run: Manual context-menu test confirmed: 1 `explorer.exe` process, folder reopened, zero zombie processes.
