@@ -32,7 +32,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Refresh Shell
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell]
 "MUIVerb"="Refresh Shell"
-"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell3.ico"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
@@ -62,7 +62,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Refresh Shell (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell]
 "MUIVerb"="Refresh Shell"
-"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell3.ico"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
