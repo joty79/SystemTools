@@ -15,7 +15,8 @@ Windows Registry Editor Version 5.00
 ; Submenu: PATH manager
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager]
 "MUIVerb"="Manage Folder PATH..."
-"Icon"="imageres.dll,-5302"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\folder_to_path.ico"
+
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\PathManager\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%1\""
@@ -23,7 +24,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Restart Explorer
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RestartExplorer]
 "MUIVerb"="Restart Explorer"
-"Icon"="imageres.dll,-5358"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%1\""
@@ -31,7 +32,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Refresh Shell
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell]
 "MUIVerb"="Refresh Shell"
-"Icon"="imageres.dll,-5308"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell3.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
@@ -45,7 +46,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: PATH manager (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\PathManager]
 "MUIVerb"="Manage Folder PATH..."
-"Icon"="imageres.dll,-5302"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\folder_to_path.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\PathManager\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%V\""
@@ -53,7 +54,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Restart Explorer (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RestartExplorer]
 "MUIVerb"="Restart Explorer"
-"Icon"="imageres.dll,-5358"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%V\""
@@ -61,7 +62,7 @@ Windows Registry Editor Version 5.00
 ; Submenu: Refresh Shell (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell]
 "MUIVerb"="Refresh Shell"
-"Icon"="imageres.dll,-5308"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell3.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
