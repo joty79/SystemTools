@@ -4,9 +4,11 @@ Windows Registry Editor Version 5.00
 [-HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools]
 [-HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
 [-HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
+[-HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools]
 [-HKEY_CLASSES_ROOT\*\shell\SystemTools]
 [-HKEY_CLASSES_ROOT\Directory\shell\SystemTools]
 [-HKEY_CLASSES_ROOT\Directory\Background\shell\SystemTools]
+[-HKEY_CLASSES_ROOT\DesktopBackground\Shell\SystemTools]
 
 ; Parent menu (files)
 [HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools]
@@ -73,4 +75,26 @@ Windows Registry Editor Version 5.00
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
+
+; Parent menu (desktop background)
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools]
+"MUIVerb"="System Tools"
+"SubCommands"=""
+"Icon"="imageres.dll,-109"
+
+; Submenu: Restart Explorer (desktop background)
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RestartExplorer]
+"MUIVerb"="Restart Explorer"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RestartExplorer\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%V\""
+
+; Submenu: Refresh Shell (desktop background)
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RefreshShell]
+"MUIVerb"="Refresh Shell"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""

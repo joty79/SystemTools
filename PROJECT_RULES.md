@@ -314,3 +314,12 @@
 - Guardrail/rule: `SystemToolsMenu.reg` remains the canonical host definition. `Install-SystemToolsMenu.ps1` must create the same key/value structure, and install-time cleanup of the parent `SystemTools` keys is relied on to remove any old extra child verbs before re-applying the canonical set.
 - Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `PROJECT_RULES.md`.
 - Validation/tests run: Static diff of `.reg` keys vs installer-created keys; PowerShell parser validation after sync.
+
+### Entry - 2026-03-02 (Desktop background host support for shared System Tools)
+
+- Date: 2026-03-02
+- Problem: `SystemCleanup` needed to move under the shared `System Tools` submenu while keeping its natural surface on desktop background right-click.
+- Root cause: `SystemTools` only owned `*\shell`, `Directory\shell`, and `Directory\Background\shell`, so there was no shared host parent for `DesktopBackground\Shell`.
+- Guardrail/rule: `SystemTools` owns the shared submenu parent on desktop background too: `HKCU\Software\Classes\DesktopBackground\Shell\SystemTools`. Keep `Restart Explorer` and `Refresh Shell` as built-in desktop-background children so the host is not empty.
+- Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: Static review of canonical `.reg` and installer sync; parser validation on `Install-SystemToolsMenu.ps1`.

@@ -11,13 +11,16 @@ $ErrorActionPreference = 'Stop'
 $fileBaseKey = 'HKCU\Software\Classes\*\shell\SystemTools'
 $directoryBaseKey = 'HKCU\Software\Classes\Directory\shell\SystemTools'
 $backgroundBaseKey = 'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
+$desktopBaseKey = 'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools'
 $legacyKeys = @(
     'HKCR\*\shell\SystemTools',
     'HKCU\Software\Classes\*\shell\SystemTools',
     'HKCR\Directory\shell\SystemTools',
     'HKCU\Software\Classes\Directory\shell\SystemTools',
     'HKCR\Directory\Background\shell\SystemTools',
-    'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
+    'HKCU\Software\Classes\Directory\Background\shell\SystemTools',
+    'HKCR\DesktopBackground\Shell\SystemTools',
+    'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools'
 )
 
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
@@ -106,6 +109,20 @@ function Install-Menu {
     Add-Value -Key $backgroundRefreshKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
     Add-Value -Key "$backgroundRefreshKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
 
+    Add-Value -Key $desktopBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
+    Add-Value -Key $desktopBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $desktopBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
+
+    $desktopRestartKey = "$desktopBaseKey\shell\RestartExplorer"
+    Add-Value -Key $desktopRestartKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'
+    Add-Value -Key $desktopRestartKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\restart_explorer.ico"
+    Add-Value -Key "$desktopRestartKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"%V`""
+
+    $desktopRefreshKey = "$desktopBaseKey\shell\RefreshShell"
+    Add-Value -Key $desktopRefreshKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Refresh Shell'
+    Add-Value -Key $desktopRefreshKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
+    Add-Value -Key "$desktopRefreshKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
+
     Write-Host 'System Tools folder context menu installed.' -ForegroundColor Green
 }
 
@@ -117,8 +134,9 @@ function Uninstall-Menu {
 function Show-Status {
     $directoryQuery = Reg-Run -RegArgs @('query', $directoryBaseKey) -IgnoreNotFound
     $backgroundQuery = Reg-Run -RegArgs @('query', $backgroundBaseKey) -IgnoreNotFound
+    $desktopQuery = Reg-Run -RegArgs @('query', $desktopBaseKey) -IgnoreNotFound
     $fileQuery = Reg-Run -RegArgs @('query', $fileBaseKey) -IgnoreNotFound
-    if ($null -eq $directoryQuery -and $null -eq $backgroundQuery -and $null -eq $fileQuery) {
+    if ($null -eq $directoryQuery -and $null -eq $backgroundQuery -and $null -eq $desktopQuery -and $null -eq $fileQuery) {
         Write-Host 'System Tools menu: NOT INSTALLED' -ForegroundColor Yellow
     }
     else {
