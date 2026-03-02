@@ -323,3 +323,12 @@
 - Guardrail/rule: `SystemTools` owns the shared submenu parent on desktop background too: `HKCU\Software\Classes\DesktopBackground\Shell\SystemTools`. Keep `Restart Explorer` and `Refresh Shell` as built-in desktop-background children so the host is not empty.
 - Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: Static review of canonical `.reg` and installer sync; parser validation on `Install-SystemToolsMenu.ps1`.
+
+### Entry - 2026-03-02 (Desktop background order is controlled separately)
+
+- Date: 2026-03-02
+- Problem: `System Tools` appeared at a reasonable place on folder and folder-background menus but too high on the desktop background context menu.
+- Root cause: `DesktopBackground\Shell` ordering is not controlled by `MUIVerb`; it needs its own ordering hint. The desktop branch can drift from folder/background ordering even when the visible label is identical.
+- Guardrail/rule: For the desktop background host only, set `Position="Bottom"` on `HKCU\Software\Classes\DesktopBackground\Shell\SystemTools`. Do not assume `MUIVerb` affects order.
+- Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: Static review of desktop host branch; parser validation on `Install-SystemToolsMenu.ps1`.
