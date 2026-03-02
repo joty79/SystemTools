@@ -1,10 +1,18 @@
 Windows Registry Editor Version 5.00
 
 ; Cleanup existing System Tools keys before re-applying
+[-HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools]
 [-HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
 [-HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
+[-HKEY_CLASSES_ROOT\*\shell\SystemTools]
 [-HKEY_CLASSES_ROOT\Directory\shell\SystemTools]
 [-HKEY_CLASSES_ROOT\Directory\Background\shell\SystemTools]
+
+; Parent menu (files)
+[HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools]
+"MUIVerb"="System Tools"
+"SubCommands"=""
+"Icon"="imageres.dll,-109"
 
 ; Parent menu
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]

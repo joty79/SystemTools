@@ -8,13 +8,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$baseKey = 'HKCU\Software\Classes\Directory\shell\SystemTools'
+$fileBaseKey = 'HKCU\Software\Classes\*\shell\SystemTools'
+$directoryBaseKey = 'HKCU\Software\Classes\Directory\shell\SystemTools'
+$backgroundBaseKey = 'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
 $legacyKeys = @(
+    'HKCR\*\shell\SystemTools',
+    'HKCU\Software\Classes\*\shell\SystemTools',
     'HKCR\Directory\shell\SystemTools',
-    'HKCU\Software\Classes\Directory\shell\SystemTools'
+    'HKCU\Software\Classes\Directory\shell\SystemTools',
+    'HKCR\Directory\Background\shell\SystemTools',
+    'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
 )
 
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+$iconsDir   = Join-Path $scriptRoot '.assets\icons'
 $toolScript = Join-Path $scriptRoot 'AddDelPath.ps1'
 $restartScript = Join-Path $scriptRoot 'RestartExplorer.ps1'
 $refreshScript = Join-Path $scriptRoot 'RefreshShell.ps1'
@@ -43,11 +50,11 @@ function Reg-Run([string[]]$RegArgs, [switch]$IgnoreNotFound, [switch]$IgnoreAcc
 }
 
 function Add-Value([string]$Key, [string]$Name, [string]$Type, [AllowEmptyString()][string]$Data) {
-    $value = if ($Type -eq 'REG_DWORD') { if ([string]::IsNullOrWhiteSpace($Data)) { '0' } else { $Data } } else { if ($Data -eq '') { '""' } else { $Data } }
-    $args = @('add', $Key)
-    if ($Name -eq '(default)') { $args += '/ve' } else { $args += @('/v', $Name) }
-    $args += @('/t', $Type, '/d', $value, '/f')
-    Reg-Run -RegArgs $args | Out-Null
+    $value = if ($Type -eq 'REG_DWORD') { if ([string]::IsNullOrWhiteSpace($Data)) { '0' } else { $Data } } else { $Data }
+    $regArgs = @('add', $Key)
+    if ($Name -eq '(default)') { $regArgs += '/ve' } else { $regArgs += @('/v', $Name) }
+    $regArgs += @('/t', $Type, '/d', $value, '/f')
+    Reg-Run -RegArgs $regArgs | Out-Null
 }
 
 function Remove-Key([string]$Key) {
@@ -57,28 +64,47 @@ function Remove-Key([string]$Key) {
 function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
-    Add-Value -Key $baseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
-    Add-Value -Key $baseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-73'
+    Add-Value -Key $fileBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
+    Add-Value -Key $fileBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $fileBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
 
-    $statusKey = "$baseKey\shell\PathStatus"
-    Add-Value -Key $statusKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Folder PATH Status (User/Machine)'
-    Add-Value -Key $statusKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5302'
-    Add-Value -Key "$statusKey\command" -Name '(default)' -Type 'REG_SZ' -Data "pwsh.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File `"$toolScript`" -Action Status -TargetPath `"%1`""
+    Add-Value -Key $directoryBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
+    Add-Value -Key $directoryBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $directoryBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
 
-    $toggleUserKey = "$baseKey\shell\PathToggleUser"
-    Add-Value -Key $toggleUserKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Toggle Folder in User PATH'
-    Add-Value -Key $toggleUserKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5302'
-    Add-Value -Key "$toggleUserKey\command" -Name '(default)' -Type 'REG_SZ' -Data "pwsh.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File `"$toolScript`" -Action Toggle -Scope User -TargetPath `"%1`""
+    $pathManagerKey = "$directoryBaseKey\shell\PathManager"
+    Add-Value -Key $pathManagerKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Manage Folder PATH...'
+    Add-Value -Key $pathManagerKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\folder_to_path.ico"
+    Add-Value -Key "$pathManagerKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"%1`""
 
-    $restartExplorerKey = "$baseKey\shell\RestartExplorer"
+    $restartExplorerKey = "$directoryBaseKey\shell\RestartExplorer"
     Add-Value -Key $restartExplorerKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'
-    Add-Value -Key $restartExplorerKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5358'
+    Add-Value -Key $restartExplorerKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\restart_explorer.ico"
     Add-Value -Key "$restartExplorerKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"%1`""
 
-    $refreshShellKey = "$baseKey\shell\RefreshShell"
+    $refreshShellKey = "$directoryBaseKey\shell\RefreshShell"
     Add-Value -Key $refreshShellKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Refresh Shell'
-    Add-Value -Key $refreshShellKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-5308'
+    Add-Value -Key $refreshShellKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
     Add-Value -Key "$refreshShellKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
+
+    Add-Value -Key $backgroundBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
+    Add-Value -Key $backgroundBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $backgroundBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
+
+    $backgroundPathKey = "$backgroundBaseKey\shell\PathManager"
+    Add-Value -Key $backgroundPathKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Manage Folder PATH...'
+    Add-Value -Key $backgroundPathKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\folder_to_path.ico"
+    Add-Value -Key "$backgroundPathKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"%V`""
+
+    $backgroundRestartKey = "$backgroundBaseKey\shell\RestartExplorer"
+    Add-Value -Key $backgroundRestartKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'
+    Add-Value -Key $backgroundRestartKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\restart_explorer.ico"
+    Add-Value -Key "$backgroundRestartKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"%V`""
+
+    $backgroundRefreshKey = "$backgroundBaseKey\shell\RefreshShell"
+    Add-Value -Key $backgroundRefreshKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Refresh Shell'
+    Add-Value -Key $backgroundRefreshKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
+    Add-Value -Key "$backgroundRefreshKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
 
     Write-Host 'System Tools folder context menu installed.' -ForegroundColor Green
 }
@@ -89,8 +115,10 @@ function Uninstall-Menu {
 }
 
 function Show-Status {
-    $q = Reg-Run -RegArgs @('query', $baseKey) -IgnoreNotFound
-    if ($null -eq $q) {
+    $directoryQuery = Reg-Run -RegArgs @('query', $directoryBaseKey) -IgnoreNotFound
+    $backgroundQuery = Reg-Run -RegArgs @('query', $backgroundBaseKey) -IgnoreNotFound
+    $fileQuery = Reg-Run -RegArgs @('query', $fileBaseKey) -IgnoreNotFound
+    if ($null -eq $directoryQuery -and $null -eq $backgroundQuery -and $null -eq $fileQuery) {
         Write-Host 'System Tools menu: NOT INSTALLED' -ForegroundColor Yellow
     }
     else {

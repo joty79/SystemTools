@@ -261,6 +261,15 @@
 - Files affected: `Launch-RefreshShell.vbs`, `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: PowerShell parser validation for `Install-SystemToolsMenu.ps1`; manual review of registry command wiring.
 
+### Entry - 2026-03-02 (SystemTools owns all shared submenu parents)
+
+- Date: 2026-03-02
+- Problem: Child tool repos (`WhoIsUsingThis`, `TakeOwnership`) kept breaking the shared `System Tools` cascade when they tried to create or patch parent keys themselves.
+- Root cause: `SystemTools` only owned `Directory\shell` and `Directory\Background\shell` parents, while file-branch integrations were forced to invent their own `*\shell\SystemTools` parent definitions.
+- Guardrail/rule: `SystemTools` is the sole owner of shared parent keys on all supported branches (`*\shell`, `Directory\shell`, `Directory\Background\shell`). Parent keys must be nested-shell cascades with `MUIVerb` + `Icon` only; do not use empty `SubCommands` values for this shared menu.
+- Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation for `Install-SystemToolsMenu.ps1`; static review of file/folder/background parent coverage.
+
 ### Entry - 2026-02-28 (PATH Menu Exit Should Close WT Tab)
 
 - Date: 2026-02-28
@@ -278,3 +287,30 @@
 - Guardrail/rule: For the PATH Manager menu host only, use `pwsh.exe -NoExit` and allow the normal profile to load so option `0` hands off to an interactive `pwsh` session instead of closing WT.
 - Files affected: `Launch-SystemToolsMenu.vbs`, `AddDelPath.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: PowerShell parser validation for `AddDelPath.ps1`; manual review of WT launch arguments.
+
+### Entry - 2026-03-02 ($args Automatic Variable Bug in Add-Value)
+
+- Date: 2026-03-02
+- Problem: `Install-SystemToolsMenu.ps1` `-Action Install` silently produced broken/empty registry entries; `.reg` file import worked fine.
+- Root cause: `Add-Value` function used `$args` as a local variable name to build `reg.exe` arguments. `$args` is a PowerShell automatic variable and is silently overwritten by the runtime inside functions, so the constructed argument array was never passed to `reg.exe`. Secondary issue: empty `SubCommands` data was written as literal `""` (two quote characters) instead of actual empty string.
+- Guardrail/rule: Never use `$args` as a custom variable inside functions (guardrail #17). For `reg.exe` argument arrays, use `$regArgs` or similar.
+- Files affected: `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: PowerShell parser validation; `-Action Status` smoke test.
+
+### Entry - 2026-03-02 (Host Installer Must Respect Known-Good .reg Behavior)
+
+- Date: 2026-03-02
+- Problem: `SystemToolsMenu.reg` reliably produced the working cascade menu, while `Install-SystemToolsMenu.ps1` still produced divergent or broken host behavior during repeated submenu integration work.
+- Root cause: The PowerShell installer was treated as equivalent to the `.reg` artifact even though sensitive shell values such as empty `SubCommands` require byte-accurate write behavior and explicit verification. Fixing one scripting bug (`$args`) was not enough to prove equivalence.
+- Guardrail/rule: For the shared `System Tools` host menu, treat `SystemToolsMenu.reg` as the canonical source of truth until the PowerShell installer is proven byte-equivalent by readback verification. For sensitive registry writes, require explicit readback validation after install.
+- Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `PROJECT_RULES.md`.
+- Validation/tests run: Behavioral comparison against `.reg` import; review of `Install-SystemToolsMenu.ps1` vs `SystemToolsMenu.reg`.
+
+### Entry - 2026-03-02 (Installer Synced To Canonical Host .reg)
+
+- Date: 2026-03-02
+- Problem: `Install-SystemToolsMenu.ps1` created extra folder submenu verbs (`PathStatus`, `PathToggleUser`) and missed the canonical `PathManager` verb defined in `SystemToolsMenu.reg`.
+- Root cause: The installer had drifted from the `.reg` source of truth and was maintaining its own menu structure instead of mirroring the canonical host definition.
+- Guardrail/rule: `SystemToolsMenu.reg` remains the canonical host definition. `Install-SystemToolsMenu.ps1` must create the same key/value structure, and install-time cleanup of the parent `SystemTools` keys is relied on to remove any old extra child verbs before re-applying the canonical set.
+- Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `PROJECT_RULES.md`.
+- Validation/tests run: Static diff of `.reg` keys vs installer-created keys; PowerShell parser validation after sync.
