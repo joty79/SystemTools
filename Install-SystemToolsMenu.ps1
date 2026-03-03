@@ -112,6 +112,7 @@ function Install-Menu {
     Add-Value -Key $desktopBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
     Add-Value -Key $desktopBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
     Add-Value -Key $desktopBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
+    Add-Value -Key $desktopBaseKey -Name 'Position' -Type 'REG_SZ' -Data 'Bottom'
 
     $desktopRestartKey = "$desktopBaseKey\shell\RestartExplorer"
     Add-Value -Key $desktopRestartKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Restart Explorer'

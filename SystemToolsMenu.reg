@@ -82,6 +82,7 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="System Tools"
 "SubCommands"=""
 "Icon"="imageres.dll,-109"
+"Position"="Bottom"
 
 ; Submenu: Restart Explorer (desktop background)
 [HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RestartExplorer]
