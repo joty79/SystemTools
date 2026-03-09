@@ -332,3 +332,12 @@
 - Guardrail/rule: For the desktop background host only, set `Position="Bottom"` on `HKCU\Software\Classes\DesktopBackground\Shell\SystemTools`. Do not assume `MUIVerb` affects order.
 - Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `PROJECT_RULES.md`.
 - Validation/tests run: Static review of desktop host branch; parser validation on `Install-SystemToolsMenu.ps1`.
+
+### Entry - 2026-03-09 (Template installer for host repo)
+
+- Date: 2026-03-09
+- Problem: `SystemTools` needed the same reusable `Install.ps1` flow as the other tool repos, but the repo only had the bespoke `Install-SystemToolsMenu.ps1` registry installer and VBS launchers hardcoded to the dev repo path.
+- Root cause: The host repo had not yet been onboarded into `InstallerCore`, and the launchers assumed `D:\Users\joty79\scripts\SystemTools` instead of a deployed install root.
+- Guardrail/rule: Keep `Install.ps1` generated from `InstallerCore` as the primary installer for `SystemTools`. The generated install must deploy the built-in tools/assets, recreate the canonical host menu from `SystemToolsMenu.reg`, and patch the three VBS launchers to the deployed `{InstallRoot}`. Keep `Install-SystemToolsMenu.ps1` as a repo-local/manual registry helper, not as the primary install entrypoint.
+- Files affected: `Install.ps1`, `README.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Regenerated `Install.ps1` from `InstallerCore`; PowerShell parser validation passed on `Install.ps1`.

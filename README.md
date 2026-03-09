@@ -185,22 +185,33 @@ No processes killed. No windows closed. Just signals.
 
 ## 📦 Installation
 
-### Quick Setup (Registry)
+### Recommended Installer
 
 ```powershell
-# Install the context menu
+# Interactive installer (Local / GitHub source)
+pwsh -ExecutionPolicy Bypass -File .\Install.ps1
+
+# Direct actions
+pwsh -ExecutionPolicy Bypass -File .\Install.ps1 -Action Install
+pwsh -ExecutionPolicy Bypass -File .\Install.ps1 -Action Update
+pwsh -ExecutionPolicy Bypass -File .\Install.ps1 -Action Uninstall
+```
+
+This installs `SystemTools` under `%LOCALAPPDATA%\SystemToolsContext`, writes the context-menu entries, and patches the hidden VBS launchers to the deployed install path.
+
+### Registry-Only Alternative
+
+```powershell
+# Install or repair only the registry menu from the current folder
 pwsh -NoProfile -File .\Install-SystemToolsMenu.ps1 -Action Install
 
-# Check installation status
+# Check registry status
 pwsh -NoProfile -File .\Install-SystemToolsMenu.ps1 -Action Status
-
-# Uninstall
-pwsh -NoProfile -File .\Install-SystemToolsMenu.ps1 -Action Uninstall
 ```
 
 ### Manual Setup (`.reg` file)
 
-Double-click `SystemToolsMenu.reg` to import directly.
+Double-click `SystemToolsMenu.reg` to import directly when using the repo working copy itself.
 
 ### Requirements
 
@@ -217,6 +228,7 @@ Double-click `SystemToolsMenu.reg` to import directly.
 
 ```
 SystemTools/
+├── Install.ps1                   # Primary template-based installer
 ├── AddDelPath.ps1                # PATH Manager — interactive menu + CLI
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
 ├── RefreshShell.ps1              # Refresh Shell — broadcast refresh signals
