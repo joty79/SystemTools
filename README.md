@@ -18,6 +18,7 @@
 | # | Tool | Description |
 |:-:|------|-------------|
 | 🔁 | **[Restart Explorer](#-restart-explorer)** | Kill & cleanly restart `explorer.exe` — reopens target folder without zombie processes |
+| 🛡️ | **[PSRemoting Manager](#️-psremoting-manager)** | Interactive UI to safely manage WinRM and TrustedHosts |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
 
@@ -65,6 +66,34 @@ The COM method asks the **already-running** shell to open a folder window, inste
 | `-TargetPath` | `string` | Current directory | Folder to reopen after restart |
 | `-ReopenFolder` | `switch` | Off | Enable COM-based folder reopen |
 | `-NoPause` | `switch` | Off | Skip `Press Enter to close` prompt |
+
+---
+
+## 🛡️ PSRemoting Manager
+
+> Safely enable or disable Windows Remote Management (WinRM) and manage `TrustedHosts` interactively.
+
+### The Problem
+
+Managing PSRemoting via CLI parameters can be tedious and opaque, especially over public networks or when trying to configure `TrustedHosts` across workgroups without a domain controller. It is also easy to leave the WinRM service running unnecessarily.
+
+### The Solution
+
+Provides an interactive console UI block that allows you to safely:
+- **Enable PSRemoting** (Forcing enablement while skipping public network profile restrictions).
+- **Disable PSRemoting completely** (Stops the WinRM service, disables startup, and closes the Firewall rules).
+- **Add TrustedHosts** (Safely append an IP/Hostname string to the existing value without breaking it).
+- **Clear TrustedHosts** (Revert trust changes completely).
+
+### Usage
+
+**From terminal:**
+
+```powershell
+.\Toggle-PSRemoting.ps1
+```
+
+*(The script automatically prompts for UAC Elevation if not already running as Admin.)*
 
 ---
 
@@ -230,6 +259,8 @@ Double-click `SystemToolsMenu.reg` to import directly when using the repo workin
 SystemTools/
 ├── Install.ps1                   # Primary template-based installer
 ├── AddDelPath.ps1                # PATH Manager — interactive menu + CLI
+├── Export-EnvReadable.ps1        # Remote-capable ENV snapshot builder
+├── Toggle-PSRemoting.ps1         # PSRemoting Manager — interactive WinRM UI
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
 ├── RefreshShell.ps1              # Refresh Shell — broadcast refresh signals
 ├── Install-SystemToolsMenu.ps1   # Registry installer/uninstaller
