@@ -404,3 +404,12 @@
 - Guardrail/rule: Keep app update visibility inside the primary TUI, not as a separate Explorer context-menu verb. The PATH Manager should read `app-metadata.json`, show `Update: <status>` in the header, and include an `Update app` submenu that runs the generated installer flow.
 - Files affected: `AddDelPath.ps1`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
 - Validation/tests run: Parser validation passed for core scripts; installed update completed with exit code `0`; installed `AddDelPath.ps1` readback confirmed `Update app` and update-status functions are deployed; `reg.exe query` confirmed the mistaken `UpdateSystemTools` context-menu verb is absent.
+
+### Entry - 2026-04-22 (Update status must not rely on version only)
+
+- Date: 2026-04-22
+- Problem: A pushed hotfix changed `AddDelPath.ps1`, but installed copies still showed `Up to date` because `app-metadata.json` stayed at `1.0.0`.
+- Root cause: The PATH Manager update UI compared only local/remote app versions and did not know which Git commit the installed copy came from.
+- Guardrail/rule: Bump `app-metadata.json` for shipped user-facing changes. Also use InstallerCore `state\install-meta.json` commit metadata when present so same-version remote commits can show as `Update available`.
+- Files affected: `app-metadata.json`, `AddDelPath.ps1`, `Install.ps1`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for core scripts; `app-metadata.json` and `InstallerCore\profiles\SystemTools.json` parsed as JSON; `AddDelPath.ps1 -Action Status -NoPause` smoke test passed; update-status function probe returned `LocalAhead` before the `1.0.1` push because remote still had `1.0.0`.

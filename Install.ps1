@@ -465,6 +465,8 @@ $script:UninstallKeyPath = "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windo
 $script:Warnings = [System.Collections.Generic.List[string]]::new()
 $script:ResolvedPackageSource = $PackageSource
 $script:ResolvedGitHubCommit = ''
+$script:ResolvedSourceGitBranch = ''
+$script:ResolvedSourceDirty = $false
 $script:TempPackageRoots = [System.Collections.Generic.List[string]]::new()
 $script:HasCliArgs = $MyInvocation.BoundParameters.Count -gt 0
 $script:IsWindowsTerminalSession = -not [string]::IsNullOrWhiteSpace($env:WT_SESSION)
@@ -593,6 +595,54 @@ function Get-GitHubApiHeaders {
     }
     return $headers
 }
+function ResolveGitHubCommit([string]$Repo, [string]$Ref) {
+    if ([string]::IsNullOrWhiteSpace($Repo) -or [string]::IsNullOrWhiteSpace($Ref)) { return '' }
+
+    if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+        try {
+            $sha = (& gh.exe api "repos/$Repo/commits/$Ref" --jq '.sha' 2>$null | Out-String).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($sha)) { return $sha }
+        }
+        catch {}
+    }
+
+    try {
+        $headers = Get-GitHubApiHeaders
+        $commitInfo = Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}/commits/{1}" -f $Repo, $Ref) -Method Get -Headers $headers -TimeoutSec 8
+        if ($null -ne $commitInfo -and -not [string]::IsNullOrWhiteSpace([string]$commitInfo.sha)) {
+            return [string]$commitInfo.sha
+        }
+    }
+    catch {}
+
+    return ''
+}
+function Set-LocalSourceGitMetadata([string]$Root) {
+    $script:ResolvedGitHubCommit = ''
+    $script:ResolvedSourceGitBranch = ''
+    $script:ResolvedSourceDirty = $false
+
+    if ([string]::IsNullOrWhiteSpace($Root) -or -not (Get-Command git.exe -ErrorAction SilentlyContinue)) { return }
+
+    try {
+        $inside = (& git.exe -C $Root rev-parse --is-inside-work-tree 2>$null | Out-String).Trim()
+        if ($inside -ne 'true') { return }
+
+        $commit = (& git.exe -C $Root rev-parse HEAD 2>$null | Out-String).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($commit)) {
+            $script:ResolvedGitHubCommit = $commit
+        }
+
+        $branch = (& git.exe -C $Root branch --show-current 2>$null | Out-String).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($branch)) {
+            $script:ResolvedSourceGitBranch = $branch
+        }
+
+        $dirty = (& git.exe -C $Root status --porcelain 2>$null | Out-String).Trim()
+        $script:ResolvedSourceDirty = (-not [string]::IsNullOrWhiteSpace($dirty))
+    }
+    catch {}
+}
 function Get-GitHubRemoteInfo([string]$Repo) {
     $result = [ordered]@{
         DefaultBranch = ''
@@ -681,12 +731,17 @@ function ResolveGitHubRefAuto {
 function EnsureGitHubRefResolved {
     $resolved = ResolveGitHubRefAuto
     $script:GitHubRefSpecified = $true
-    $script:ResolvedGitHubCommit = ''
     Set-Variable -Name GitHubRef -Scope Script -Value $resolved
+    $script:ResolvedGitHubCommit = ResolveGitHubCommit -Repo $GitHubRepo -Ref $resolved
+    $script:ResolvedSourceGitBranch = $resolved
+    $script:ResolvedSourceDirty = $false
 }
 function ResolveSourceRoot {
     $script:ResolvedPackageSource = $PackageSource
-    if ($PackageSource -eq 'Local' -and (TestPkgRoot $SourcePath)) { return $SourcePath }
+    if ($PackageSource -eq 'Local' -and (TestPkgRoot $SourcePath)) {
+        Set-LocalSourceGitMetadata -Root $SourcePath
+        return $SourcePath
+    }
     if ([string]::IsNullOrWhiteSpace($GitHubRepo)) { throw 'GitHubRepo is required for GitHub package source.' }
     if ([string]::IsNullOrWhiteSpace($GitHubRef)) { EnsureGitHubRefResolved }
     if ([string]::IsNullOrWhiteSpace($GitHubRef)) { throw 'GitHubRef could not be resolved for GitHub package source.' }
@@ -734,6 +789,7 @@ function ResolveSourceRoot {
             if ($fallbackRoots.Count -gt 0) {
                 Log "GitHub fetch failed. Falling back to local package source: $($fallbackRoots[0])" 'WARN'
                 $script:ResolvedPackageSource = 'Local'
+                Set-LocalSourceGitMetadata -Root $fallbackRoots[0]
                 return $fallbackRoots[0]
             }
             throw
@@ -746,6 +802,7 @@ function ResolveSourceRoot {
         if ($fallbackRoots.Count -gt 0) {
             Log "GitHub extract failed. Falling back to local package source: $($fallbackRoots[0])" 'WARN'
             $script:ResolvedPackageSource = 'Local'
+            Set-LocalSourceGitMetadata -Root $fallbackRoots[0]
             return $fallbackRoots[0]
         }
         throw
@@ -755,6 +812,7 @@ function ResolveSourceRoot {
     if ($fallbackRoots.Count -gt 0) {
         Log "Downloaded package missing required files. Falling back to local package source: $($fallbackRoots[0])" 'WARN'
         $script:ResolvedPackageSource = 'Local'
+        Set-LocalSourceGitMetadata -Root $fallbackRoots[0]
         return $fallbackRoots[0]
     }
     throw 'Downloaded package does not contain required files.'
@@ -819,6 +877,8 @@ function SaveMeta([string]$InstallRoot, [string]$Mode) {
         github_ref = $GitHubRef
         github_zip_url = $GitHubZipUrl
         github_commit = $script:ResolvedGitHubCommit
+        source_git_branch = $script:ResolvedSourceGitBranch
+        source_dirty = $script:ResolvedSourceDirty
         last_action = $Mode
         installed_utc = (Get-Date).ToUniversalTime().ToString('o')
     }

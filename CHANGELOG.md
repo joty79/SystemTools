@@ -11,7 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.1**: Bumped `app-metadata.json` so installed copies can detect the current PATH Manager update through the existing version-based update UI.
 - **PATH Manager Update UI**: Added the InstallerCore-style `Update: ...` header status and `Update app` submenu inside the PATH Manager TUI.
+- **PATH Manager Update Status**: Added commit-aware update checks for installed copies that have InstallerCore `state\install-meta.json` metadata, so same-version hotfix commits can still show as updateable.
 - **PATH Manager UI**: Replaced the old numbered `Read-Host` PATH menu with the shared resize-safe arrow-menu UI from `.codex\tools\PS_UI_Blueprint.psm1`.
 - **InstallerCore Alignment**: Regenerated `Install.ps1` from the current `InstallerCore` template so `SystemTools` now picks up the newer generated installer flow, including app metadata version resolution and self-relaunch controls for `DownloadLatest`.
 - **Package Coverage**: Installer package manifests now include `app-metadata.json`, `Toggle-PSRemoting.ps1`, and `Export-EnvReadable.ps1`, so installed copies no longer miss the terminal-only tools documented in the repo.

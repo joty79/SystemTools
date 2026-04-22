@@ -43,6 +43,7 @@ $script:SystemToolsAppVersion = '1.0.0'
 $script:SystemToolsGitHubRepo = 'joty79/SystemTools'
 $script:SystemToolsMetadataPath = Join-Path $script:SystemToolsRootPath 'app-metadata.json'
 $script:SystemToolsStatePath = Join-Path $script:SystemToolsRootPath 'state'
+$script:SystemToolsInstallMetaPath = Join-Path $script:SystemToolsStatePath 'install-meta.json'
 $script:SystemToolsUpdateStatusCachePath = Join-Path $script:SystemToolsStatePath 'app-update-status.json'
 $script:SystemToolsUpdateStatusCacheTtlMinutes = 30
 $script:SystemToolsUpdateStatus = $null
@@ -82,6 +83,8 @@ function New-SystemToolsUpdateStatus {
         [string]$Status = 'Unknown',
         [string]$Message = 'Update status has not been checked yet.',
         [AllowEmptyString()][string]$CheckedAt = '',
+        [AllowEmptyString()][string]$LocalCommit = '',
+        [AllowEmptyString()][string]$RemoteCommit = '',
         [AllowEmptyString()][string]$Error = ''
     )
 
@@ -95,6 +98,8 @@ function New-SystemToolsUpdateStatus {
         IsUpToDate    = ($Status -eq 'UpToDate')
         Message       = $Message
         CheckedAt     = $CheckedAt
+        LocalCommit   = $LocalCommit
+        RemoteCommit  = $RemoteCommit
         Error         = $Error
     }
 }
@@ -159,6 +164,8 @@ function Read-SystemToolsUpdateStatusCache {
             -Status ([string]$cache.Status) `
             -Message ([string]$cache.Message) `
             -CheckedAt ([string]$cache.CheckedAt) `
+            -LocalCommit ([string]$cache.LocalCommit) `
+            -RemoteCommit ([string]$cache.RemoteCommit) `
             -Error ([string]$cache.Error))
     }
     catch {
@@ -218,6 +225,72 @@ function Get-RemoteSystemToolsMetadata {
     return $null
 }
 
+function Get-SystemToolsInstalledCommitInfo {
+    $result = [ordered]@{
+        GitHubCommit = ''
+        GitHubRef    = ''
+        PackageSource = ''
+        SourceDirty  = $false
+    }
+
+    if (-not (Test-Path -LiteralPath $script:SystemToolsInstallMetaPath -PathType Leaf)) {
+        return [pscustomobject]$result
+    }
+
+    try {
+        $installMeta = Get-Content -LiteralPath $script:SystemToolsInstallMetaPath -Raw | ConvertFrom-Json
+        foreach ($item in @(
+            @{ Name = 'github_commit'; Target = 'GitHubCommit' },
+            @{ Name = 'github_ref'; Target = 'GitHubRef' },
+            @{ Name = 'package_source'; Target = 'PackageSource' }
+        )) {
+            $property = $installMeta.PSObject.Properties[$item.Name]
+            if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                $result[$item.Target] = [string]$property.Value
+            }
+        }
+
+        $dirtyProperty = $installMeta.PSObject.Properties['source_dirty']
+        if ($null -ne $dirtyProperty) {
+            $result.SourceDirty = [bool]$dirtyProperty.Value
+        }
+    }
+    catch {
+    }
+
+    return [pscustomobject]$result
+}
+
+function Get-RemoteSystemToolsCommit {
+    param(
+        [AllowEmptyString()][string]$Repo = $script:SystemToolsGitHubRepo,
+        [AllowEmptyString()][string]$Ref = 'master'
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Repo) -or [string]::IsNullOrWhiteSpace($Ref)) { return '' }
+
+    if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+        try {
+            $sha = (& gh.exe api "repos/$Repo/commits/$Ref" --jq '.sha' 2>$null | Out-String).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($sha)) { return $sha }
+        }
+        catch {
+        }
+    }
+
+    try {
+        $uri = "https://api.github.com/repos/$Repo/commits/$Ref"
+        $commitInfo = Invoke-RestMethod -Uri $uri -Method Get -Headers @{ 'User-Agent' = "$($script:SystemToolsAppName)/$($script:SystemToolsAppVersion)" } -TimeoutSec 8
+        if ($null -ne $commitInfo -and -not [string]::IsNullOrWhiteSpace([string]$commitInfo.sha)) {
+            return [string]$commitInfo.sha
+        }
+    }
+    catch {
+    }
+
+    return ''
+}
+
 function Resolve-SystemToolsUpdateStatus {
     param([switch]$ForceRefresh)
 
@@ -248,6 +321,9 @@ function Resolve-SystemToolsUpdateStatus {
     $remoteVersionObject = ConvertTo-SystemToolsVersion -VersionText $latestVersion
     $statusName = 'Unknown'
     $statusMessage = 'Update status is unavailable.'
+    $commitInfo = Get-SystemToolsInstalledCommitInfo
+    $localCommit = [string]$commitInfo.GitHubCommit
+    $remoteCommit = Get-RemoteSystemToolsCommit -Repo ([string]$remoteInfo.Repo) -Ref ([string]$remoteInfo.Branch)
 
     if ($null -ne $localVersionObject -and $null -ne $remoteVersionObject) {
         if ($localVersionObject -lt $remoteVersionObject) {
@@ -268,6 +344,17 @@ function Resolve-SystemToolsUpdateStatus {
         $statusMessage = "App is up to date at v$latestVersion."
     }
 
+    if ($statusName -in @('UpToDate', 'Unknown') -and
+        -not [string]::IsNullOrWhiteSpace($localCommit) -and
+        -not [string]::IsNullOrWhiteSpace($remoteCommit) -and
+        $localCommit -ne $remoteCommit) {
+        $statusName = 'UpdateAvailable'
+        $statusMessage = "Update available: remote $($remoteInfo.Branch) has newer code."
+    }
+    elseif ($statusName -eq 'UpToDate' -and -not [string]::IsNullOrWhiteSpace($localCommit)) {
+        $statusMessage = "App is up to date at v$latestVersion (commit $($localCommit.Substring(0, [Math]::Min(7, $localCommit.Length))))."
+    }
+
     $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus `
         -LocalVersion $script:SystemToolsAppVersion `
         -LatestVersion $latestVersion `
@@ -275,6 +362,8 @@ function Resolve-SystemToolsUpdateStatus {
         -Branch ([string]$remoteInfo.Branch) `
         -Status $statusName `
         -Message $statusMessage `
+        -LocalCommit $localCommit `
+        -RemoteCommit $remoteCommit `
         -CheckedAt ((Get-Date).ToString('s'))
 
     Write-SystemToolsUpdateStatusCache -Status $script:SystemToolsUpdateStatus
@@ -316,6 +405,8 @@ function Get-SystemToolsUpdateStatusPresentation {
         Branch        = [string]$script:SystemToolsUpdateStatus.Branch
         Message       = [string]$script:SystemToolsUpdateStatus.Message
         CheckedAt     = [string]$script:SystemToolsUpdateStatus.CheckedAt
+        LocalCommit   = [string]$script:SystemToolsUpdateStatus.LocalCommit
+        RemoteCommit  = [string]$script:SystemToolsUpdateStatus.RemoteCommit
     }
 }
 
@@ -1078,6 +1169,8 @@ function Show-SystemToolsUpdateMenu {
         $latestLabel = if ([string]::IsNullOrWhiteSpace($status.LatestVersion)) { '--' } else { $status.LatestVersion }
         $branchLabel = if ([string]::IsNullOrWhiteSpace($status.Branch)) { '--' } else { $status.Branch }
         $checkedAtLabel = if ([string]::IsNullOrWhiteSpace($status.CheckedAt)) { '--' } else { $status.CheckedAt.Replace('T', ' ') }
+        $localCommitLabel = if ([string]::IsNullOrWhiteSpace($status.LocalCommit)) { '--' } else { $status.LocalCommit.Substring(0, [Math]::Min(7, $status.LocalCommit.Length)) }
+        $remoteCommitLabel = if ([string]::IsNullOrWhiteSpace($status.RemoteCommit)) { '--' } else { $status.RemoteCommit.Substring(0, [Math]::Min(7, $status.RemoteCommit.Length)) }
 
         $headerBlock = {
             Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'PATH Manager'
@@ -1085,6 +1178,7 @@ function Show-SystemToolsUpdateMenu {
             Write-Host "  $($_C.H2)Latest version :$($_C.Reset) $($_C.Info)$latestLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Update        :$($_C.Reset) $($status.Color)$($status.Label)$($_C.Reset)"
             Write-Host "  $($_C.H2)Repo / branch :$($_C.Reset) $($_C.Info)$($status.Repo)$($_C.Reset) $($_C.Dim)|$($_C.Reset) $($_C.Info)$branchLabel$($_C.Reset)"
+            Write-Host "  $($_C.H2)Commits       :$($_C.Reset) $($_C.Info)$localCommitLabel$($_C.Reset) $($_C.Dim)->$($_C.Reset) $($_C.Info)$remoteCommitLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Target        :$($_C.Reset) $($_C.Info)$targetLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Method        :$($_C.Reset) $($_C.Info)$methodLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Last check    :$($_C.Reset) $($_C.Dim)$checkedAtLabel$($_C.Reset)"

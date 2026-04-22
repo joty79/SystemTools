@@ -109,6 +109,7 @@ Provides an interactive console UI block that allows you to safely:
 | 🔁 **Toggle Machine PATH** | Auto-elevates to Admin via UAC |
 | 🌿 **ENV Snapshot** | Live split-pane view of all environment variables in Windows Terminal |
 | 💾 **Export** | Save full environment snapshot as Markdown documentation |
+| ⬆️ **Update App** | Shows local/remote version and commit status, then runs the generated InstallerCore updater |
 | 📡 **Broadcast** | Sends `WM_SETTINGCHANGE` so all apps pick up PATH changes instantly |
 
 ### Usage
@@ -124,6 +125,7 @@ Opens a resize-safe arrow menu in Windows Terminal:
 ╚════════════════════════════════════════════════════════╝
 
   Update        : Up to date
+  Commits       : 8ce4f90 -> 8ce4f90
   Target Folder : D:\Users\joty79\scripts\SystemTools
   Session Mode  : Admin
   User PATH     : YES
@@ -262,6 +264,7 @@ Double-click `SystemToolsMenu.reg` to import directly when using the repo workin
 
 ```
 SystemTools/
+├── app-metadata.json             # App version and GitHub metadata for update checks
 ├── Install.ps1                   # Primary template-based installer
 ├── AddDelPath.ps1                # PATH Manager — interactive menu + CLI
 ├── Export-EnvReadable.ps1        # Remote-capable ENV snapshot builder
