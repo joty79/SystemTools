@@ -341,3 +341,66 @@
 - Guardrail/rule: Keep `Install.ps1` generated from `InstallerCore` as the primary installer for `SystemTools`. The generated install must deploy the built-in tools/assets, recreate the canonical host menu from `SystemToolsMenu.reg`, and patch the three VBS launchers to the deployed `{InstallRoot}`. Keep `Install-SystemToolsMenu.ps1` as a repo-local/manual registry helper, not as the primary install entrypoint.
 - Files affected: `Install.ps1`, `README.md`, `PROJECT_RULES.md`.
 - Validation/tests run: Regenerated `Install.ps1` from `InstallerCore`; PowerShell parser validation passed on `Install.ps1`.
+
+### Entry - 2026-04-18 (Installer manifest must include terminal-only tools + canonical UI blueprint)
+
+- Date: 2026-04-18
+- Problem: The repo contained `Toggle-PSRemoting.ps1` and `Export-EnvReadable.ps1`, but generated installs did not deploy them, and `Toggle-PSRemoting.ps1` still depended on an old `.gemini` UI blueprint path.
+- Root cause: The `InstallerCore` profile/package lists drifted behind the repo contents, and the PSRemoting UI script had not been brought forward to the shared `.codex` PowerShell UI workflow.
+- Guardrail/rule: Keep the `SystemTools` installer manifest aligned with the full repo-delivered toolset, including terminal-only scripts that are not wired into the context menu. `Toggle-PSRemoting.ps1` must use the canonical `.codex\tools\PS_UI_Blueprint.psm1` path resolution flow instead of any legacy external template path.
+- Files affected: `Install.ps1`, `Toggle-PSRemoting.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Regenerated `Install.ps1` from `InstallerCore`; `Parser::ParseFile` passed for `Install.ps1`, `Toggle-PSRemoting.ps1`, `Install-SystemToolsMenu.ps1`, `AddDelPath.ps1`, `RestartExplorer.ps1`, `RefreshShell.ps1`, and `Export-EnvReadable.ps1`.
+
+### Entry - 2026-04-22 (Visible UI update must reach the installed context-menu copy)
+
+- Date: 2026-04-22
+- Problem: The repo had UI updates, but the visible context-menu PATH Manager still looked unchanged, and `Toggle-PSRemoting.ps1` felt slow.
+- Root cause: `AddDelPath.ps1` still used the old numbered `Read-Host` menu, so the primary context-menu UI had not actually been moved to the shared blueprint. `Toggle-PSRemoting.ps1` also queried firewall/WinRM status inside the redraw path, so arrow-menu refreshes could repeat slow system queries.
+- Guardrail/rule: For visible context-menu UI work, update the installed-context entrypoint (`AddDelPath.ps1`) and then run a local `Install.ps1 -Action Update` or explicitly tell the user the installed copy has not changed. Keep expensive system queries out of `Invoke-ArrowMenu` header redraw blocks; snapshot state once per menu screen.
+- Files affected: `AddDelPath.ps1`, `Toggle-PSRemoting.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: `Parser::ParseFile` passed for core scripts; local update install ran with `-NoExplorerRestart`; readback confirmed installed `AddDelPath.ps1` contains `Invoke-ArrowMenu` and registry PathManager commands point to `C:\Users\joty79\AppData\Local\SystemToolsContext`.
+
+### Entry - 2026-04-22 (Imported UI module variables are not script globals)
+
+- Date: 2026-04-22
+- Problem: PATH Manager opened the new banner, then crashed with `The variable '$_C' cannot be retrieved because it has not been set`.
+- Root cause: `AddDelPath.ps1` and `Toggle-PSRemoting.ps1` referenced the shared blueprint module's private `$_C` color table from script-defined header/action blocks. Under `Set-StrictMode`, imported module variables are not script globals, so the header block failed at runtime.
+- Guardrail/rule: Scripts may call exported UI functions from `PS_UI_Blueprint.psm1`, but any color constants used directly by the script must be defined in that script or passed explicitly. Do not rely on private variables from imported modules.
+- Files affected: `AddDelPath.ps1`, `Toggle-PSRemoting.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: `Parser::ParseFile` passed for core scripts; local update install ran with `-NoExplorerRestart`; readback confirmed installed `AddDelPath.ps1` and `Toggle-PSRemoting.ps1` define local `$_C` palettes.
+
+### Entry - 2026-04-22 (Generated installer prompts must handle non-interactive null)
+
+- Date: 2026-04-22
+- Problem: Running `Install.ps1 -Action Update -NoExplorerRestart` from Codex crashed at `Confirm` with `You cannot call a method on a null-valued expression`.
+- Root cause: In this non-interactive host, `Read-Host` returned `$null`, and the generated installer called `.Trim()` on it. After adding `-Force`, the update completed but returned non-zero because `-NoExplorerRestart` was logged as a warning.
+- Guardrail/rule: Generated installer confirmation helpers must treat `$null` prompt responses as cancellation. Use `-Force` for non-interactive install/update verification when the prompt should be accepted. Treat intentional `-NoExplorerRestart` skips as informational, not warning/failure state. Keep this fix in `InstallerCore\templates\Install.Template.ps1`, then regenerate `SystemTools\Install.ps1`; do not leave this as a downstream-only edit.
+- Files affected: `Install.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\templates\Install.Template.ps1`.
+- Validation/tests run: `Parser::ParseFile` passed for core scripts; `SystemTools\Install.ps1` regenerated from `InstallerCore`; `Install.ps1 -Action Update -NoExplorerRestart -Force` completed with exit code `0`; readback confirmed installed `AddDelPath.ps1`, `Toggle-PSRemoting.ps1`, `Install.ps1`, and `app-metadata.json` match repo hashes.
+
+### Entry - 2026-04-22 (Suppress shared UI blueprint import warning)
+
+- Date: 2026-04-22
+- Problem: The PATH Manager window displayed a very brief warning that imported commands from `PS_UI_Blueprint.psm1` use unapproved verbs.
+- Root cause: `Import-Module` emits name-checking warnings for functions such as `Begin-SyncRender` and `End-SyncRender` before the TUI clears/redraws the screen, so the message was visible only for a couple of frames.
+- Guardrail/rule: When importing the shared PowerShell UI blueprint from user-facing TUI entrypoints, use `Import-Module -DisableNameChecking` unless/until the blueprint function names are globally renamed.
+- Files affected: `AddDelPath.ps1`, `Toggle-PSRemoting.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: `Parser::ParseFile` passed for `AddDelPath.ps1`, `Toggle-PSRemoting.ps1`, and `Install.ps1`; direct `Import-Module -DisableNameChecking` and `AddDelPath.ps1 -Action Status -NoPause` checks produced no import warning; `Install.ps1 -Action Update -NoExplorerRestart -Force` completed with exit code `0`; installed file hash readback matched repo files.
+
+### Entry - 2026-04-22 (Context launcher should not attach to existing WT tabs)
+
+- Date: 2026-04-22
+- Problem: After running the installer in Windows Terminal, launching PATH Manager from the context menu opened beside the installer as another tab in the same admin WT window.
+- Root cause: `Launch-SystemToolsMenu.vbs` invoked Windows Terminal with `-w 0 nt`, which targets the existing/current WT window when one is available.
+- Guardrail/rule: Explorer context-menu launchers should use `wt -w new nt` when the desired UX is a fresh tool window independent from any installer/dev terminal that happens to be open.
+- Files affected: `Launch-SystemToolsMenu.vbs`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for core scripts; `Install.ps1 -Action Update -NoExplorerRestart -Force` completed with exit code `0`; installed launcher readback confirmed `scriptPath` points to `C:\Users\joty79\AppData\Local\SystemToolsContext\AddDelPath.ps1` and `wtArgs` uses `-w new nt`.
+
+### Entry - 2026-04-22 (Expose InstallerCore update flow inside PATH Manager)
+
+- Date: 2026-04-22
+- Problem: The generated `Install.ps1` had InstallerCore update/download-latest functionality, but the visible PATH Manager TUI did not show the `Update: ...` header status or `Update app` submenu that newer apps expose.
+- Root cause: The host menu opens `AddDelPath.ps1`, and that TUI had not adopted the app metadata/update-status pattern from `WinAppManager`.
+- Guardrail/rule: Keep app update visibility inside the primary TUI, not as a separate Explorer context-menu verb. The PATH Manager should read `app-metadata.json`, show `Update: <status>` in the header, and include an `Update app` submenu that runs the generated installer flow.
+- Files affected: `AddDelPath.ps1`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for core scripts; installed update completed with exit code `0`; installed `AddDelPath.ps1` readback confirmed `Update app` and update-status functions are deployed; `reg.exe query` confirmed the mistaken `UpdateSystemTools` context-menu verb is absent.

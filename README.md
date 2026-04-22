@@ -115,21 +115,26 @@ Provides an interactive console UI block that allows you to safely:
 
 **From context menu** — right-click any folder → *System Tools* → *Manage Folder PATH...*
 
-Opens an interactive menu in Windows Terminal:
+Opens a resize-safe arrow menu in Windows Terminal:
 
 ```
-⚙️  System Tools - PATH Manager
-────────────────────────────────────────────────────────
-📁 Target Folder : D:\Users\joty79\scripts\SystemTools
-🛡  Session Mode  : Admin
-👤 User PATH     : ✅ YES
-🖥  Machine PATH  : ❌ NO
+╔════════════════════════════════════════════════════════╗
+║ System Tools - PATH Manager                           ║
+║ Resize-safe PATH and environment control              ║
+╚════════════════════════════════════════════════════════╝
 
-[1] 🔁 Toggle User PATH
-[2] 🔁 Toggle Machine PATH (Admin)
-[3] 🌿 Toggle full ENV snapshot (split pane in WT)
-[4] 💾 Export ENV snapshot (MD)
-[0] Exit
+  Update        : Up to date
+  Target Folder : D:\Users\joty79\scripts\SystemTools
+  Session Mode  : Admin
+  User PATH     : YES
+  Machine PATH  : NO
+
+  > Toggle User PATH
+    Toggle Machine PATH (Admin)
+    Open ENV snapshot pane
+    Export ENV snapshot (MD)
+    Update app
+    Exit
 ```
 
 **Direct CLI actions:**

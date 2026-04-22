@@ -10,7 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Remote Environment Export**: `Export-EnvReadable.ps1` now supports fetching environment variables from a remote computer via PSRemoting/WinRM.
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
+### Changed
+- **PATH Manager Update UI**: Added the InstallerCore-style `Update: ...` header status and `Update app` submenu inside the PATH Manager TUI.
+- **PATH Manager UI**: Replaced the old numbered `Read-Host` PATH menu with the shared resize-safe arrow-menu UI from `.codex\tools\PS_UI_Blueprint.psm1`.
+- **InstallerCore Alignment**: Regenerated `Install.ps1` from the current `InstallerCore` template so `SystemTools` now picks up the newer generated installer flow, including app metadata version resolution and self-relaunch controls for `DownloadLatest`.
+- **Package Coverage**: Installer package manifests now include `app-metadata.json`, `Toggle-PSRemoting.ps1`, and `Export-EnvReadable.ps1`, so installed copies no longer miss the terminal-only tools documented in the repo.
+- **PSRemoting UI Workflow**: `Toggle-PSRemoting.ps1` now loads the canonical `.codex\tools\PS_UI_Blueprint.psm1` path instead of the old `.gemini` template path, and the TrustedHosts actions now re-read live state before editing.
+
 ### Fixed
+- **Context Menu WT Window Reuse**: The PATH Manager launcher now asks Windows Terminal for a new window instead of attaching a new tab to whichever admin WT window was already open.
+- **UI Blueprint Import Flash**: Suppressed the transient `Import-Module` unapproved-verb warning when loading `PS_UI_Blueprint.psm1`, removing a two-frame startup message before the arrow UI renders.
+- **Installer Prompt Crash**: Fixed generated `Install.ps1` crashing in non-interactive hosts when `Read-Host` returns `$null`; prompts now cancel cleanly unless `-Force` is supplied.
+- **Installer Scripted Update Exit Code**: `Install.ps1 -NoExplorerRestart` now logs the intentional Explorer restart skip as informational, so scripted update verification does not fail solely because Explorer restart was suppressed.
+- **PATH Manager StrictMode Crash**: Fixed `$_C` color palette lookup failing after importing the shared UI blueprint as a module. `AddDelPath.ps1` and `Toggle-PSRemoting.ps1` now define the small ANSI palette they use locally instead of depending on private module variables.
+- **PSRemoting Manager Startup/Navigation Lag**: Removed the expensive firewall rule enumeration from the live redraw path and changed status rendering to snapshot once per menu screen instead of re-reading WinRM state on every arrow-key redraw.
 - **SystemToolsMenu Installer**: Fixed a critical bug in `Install-SystemToolsMenu.ps1` where using the `$args` automatic variable caused silent failures during registry writing.
 - **Menu Icons**: Synced context menu icons in `Install-SystemToolsMenu.ps1` to use the correct `.ico` files from `.assets\icons\` instead of generic `imageres.dll` fallback icons.
 - **SubCommands Empty Data**: Fixed an issue where empty `SubCommands` was written as literal `""` instead of a true empty string during registry installation.

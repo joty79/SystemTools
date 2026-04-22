@@ -22,8 +22,301 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$_E = [char]27
+$_C = @{
+    H2    = "$_E[38;2;140;160;180m"
+    OK    = "$_E[38;2;46;204;113m"
+    Warn  = "$_E[38;2;241;196;15m"
+    Fail  = "$_E[38;2;231;76;60m"
+    Info  = "$_E[38;2;52;152;219m"
+    Dim   = "$_E[38;2;100;110;120m"
+    Reset = "$_E[0m"
+}
+
 $UserRegKey = 'HKCU:\Environment'
 $MachineRegKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment'
+
+$script:SystemToolsRootPath = $PSScriptRoot
+$script:SystemToolsAppName = 'SystemTools'
+$script:SystemToolsAppVersion = '1.0.0'
+$script:SystemToolsGitHubRepo = 'joty79/SystemTools'
+$script:SystemToolsMetadataPath = Join-Path $script:SystemToolsRootPath 'app-metadata.json'
+$script:SystemToolsStatePath = Join-Path $script:SystemToolsRootPath 'state'
+$script:SystemToolsUpdateStatusCachePath = Join-Path $script:SystemToolsStatePath 'app-update-status.json'
+$script:SystemToolsUpdateStatusCacheTtlMinutes = 30
+$script:SystemToolsUpdateStatus = $null
+
+function Get-BlueprintModulePath {
+    $candidates = @(
+        (Join-Path $env:USERPROFILE '.codex\tools\PS_UI_Blueprint.psm1'),
+        'C:\Users\joty79\.codex\tools\PS_UI_Blueprint.psm1'
+    )
+
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            return $candidate
+        }
+    }
+
+    return ''
+}
+
+function Import-SystemToolsUi {
+    $blueprintPath = Get-BlueprintModulePath
+    if ([string]::IsNullOrWhiteSpace($blueprintPath)) {
+        return $false
+    }
+
+    Import-Module $blueprintPath -Force -DisableNameChecking
+    return $true
+}
+
+function New-SystemToolsUpdateStatus {
+    param(
+        [string]$LocalVersion = $script:SystemToolsAppVersion,
+        [AllowEmptyString()][string]$LatestVersion = '',
+        [AllowEmptyString()][string]$Repo = $script:SystemToolsGitHubRepo,
+        [AllowEmptyString()][string]$Branch = '',
+        [ValidateSet('Unknown', 'UpToDate', 'UpdateAvailable', 'LocalAhead', 'Error')]
+        [string]$Status = 'Unknown',
+        [string]$Message = 'Update status has not been checked yet.',
+        [AllowEmptyString()][string]$CheckedAt = '',
+        [AllowEmptyString()][string]$Error = ''
+    )
+
+    [pscustomobject]@{
+        LocalVersion  = $LocalVersion
+        LatestVersion = $LatestVersion
+        Repo          = $Repo
+        Branch        = $Branch
+        Status        = $Status
+        IsKnown       = ($Status -in @('UpToDate', 'UpdateAvailable', 'LocalAhead'))
+        IsUpToDate    = ($Status -eq 'UpToDate')
+        Message       = $Message
+        CheckedAt     = $CheckedAt
+        Error         = $Error
+    }
+}
+
+function Initialize-SystemToolsAppMetadata {
+    $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus
+    if (-not (Test-Path -LiteralPath $script:SystemToolsMetadataPath -PathType Leaf)) {
+        return
+    }
+
+    try {
+        $metadata = Get-Content -LiteralPath $script:SystemToolsMetadataPath -Raw | ConvertFrom-Json
+        $nameProperty = $metadata.PSObject.Properties['app_name']
+        if ($null -ne $nameProperty -and -not [string]::IsNullOrWhiteSpace([string]$nameProperty.Value)) {
+            $script:SystemToolsAppName = [string]$nameProperty.Value
+        }
+
+        $versionProperty = $metadata.PSObject.Properties['version']
+        if ($null -ne $versionProperty -and -not [string]::IsNullOrWhiteSpace([string]$versionProperty.Value)) {
+            $script:SystemToolsAppVersion = [string]$versionProperty.Value
+        }
+
+        $repoProperty = $metadata.PSObject.Properties['github_repo']
+        if ($null -ne $repoProperty -and -not [string]::IsNullOrWhiteSpace([string]$repoProperty.Value)) {
+            $script:SystemToolsGitHubRepo = [string]$repoProperty.Value
+        }
+
+        $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus -LocalVersion $script:SystemToolsAppVersion -Repo $script:SystemToolsGitHubRepo
+    }
+    catch {
+        $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus -Status 'Error' -Message 'Could not read local app metadata.' -Error $_.Exception.Message
+    }
+}
+
+function ConvertTo-SystemToolsVersion {
+    param([AllowEmptyString()][string]$VersionText)
+
+    if ([string]::IsNullOrWhiteSpace($VersionText)) { return $null }
+    try { return [version]$VersionText }
+    catch { return $null }
+}
+
+function Read-SystemToolsUpdateStatusCache {
+    param([switch]$AllowStale)
+
+    if (-not (Test-Path -LiteralPath $script:SystemToolsUpdateStatusCachePath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $cacheItem = Get-Item -LiteralPath $script:SystemToolsUpdateStatusCachePath -ErrorAction Stop
+        if (-not $AllowStale -and ((Get-Date) - $cacheItem.LastWriteTime).TotalMinutes -gt $script:SystemToolsUpdateStatusCacheTtlMinutes) {
+            return $null
+        }
+
+        $cache = Get-Content -LiteralPath $script:SystemToolsUpdateStatusCachePath -Raw | ConvertFrom-Json
+        return (New-SystemToolsUpdateStatus `
+            -LocalVersion ([string]$cache.LocalVersion) `
+            -LatestVersion ([string]$cache.LatestVersion) `
+            -Repo ([string]$cache.Repo) `
+            -Branch ([string]$cache.Branch) `
+            -Status ([string]$cache.Status) `
+            -Message ([string]$cache.Message) `
+            -CheckedAt ([string]$cache.CheckedAt) `
+            -Error ([string]$cache.Error))
+    }
+    catch {
+        return $null
+    }
+}
+
+function Write-SystemToolsUpdateStatusCache {
+    param([Parameter(Mandatory)]$Status)
+
+    try {
+        if (-not (Test-Path -LiteralPath $script:SystemToolsStatePath -PathType Container)) {
+            New-Item -Path $script:SystemToolsStatePath -ItemType Directory -Force | Out-Null
+        }
+        $Status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:SystemToolsUpdateStatusCachePath -Encoding UTF8
+    }
+    catch {
+    }
+}
+
+function Get-RemoteSystemToolsMetadata {
+    if ([string]::IsNullOrWhiteSpace($script:SystemToolsGitHubRepo)) { return $null }
+
+    foreach ($branch in @('master', 'main')) {
+        if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+            try {
+                $content = (& gh.exe api "repos/$($script:SystemToolsGitHubRepo)/contents/app-metadata.json?ref=$branch" --jq '.content' 2>$null | Out-String).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($content)) {
+                    $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($content -replace '\s', '')))
+                    $metadata = $json | ConvertFrom-Json
+                    return [pscustomobject]@{
+                        Metadata = $metadata
+                        Repo     = $script:SystemToolsGitHubRepo
+                        Branch   = $branch
+                    }
+                }
+            }
+            catch {
+            }
+        }
+
+        $rawUri = "https://raw.githubusercontent.com/$($script:SystemToolsGitHubRepo)/$branch/app-metadata.json"
+        try {
+            $metadata = Invoke-RestMethod -Uri $rawUri -Method Get -Headers @{ 'User-Agent' = "$($script:SystemToolsAppName)/$($script:SystemToolsAppVersion)" } -TimeoutSec 8
+            if ($null -ne $metadata) {
+                return [pscustomobject]@{
+                    Metadata = $metadata
+                    Repo     = $script:SystemToolsGitHubRepo
+                    Branch   = $branch
+                }
+            }
+        }
+        catch {
+        }
+    }
+
+    return $null
+}
+
+function Resolve-SystemToolsUpdateStatus {
+    param([switch]$ForceRefresh)
+
+    if (-not $ForceRefresh) {
+        $cachedStatus = Read-SystemToolsUpdateStatusCache
+        if ($null -ne $cachedStatus) {
+            $script:SystemToolsUpdateStatus = $cachedStatus
+            return $script:SystemToolsUpdateStatus
+        }
+    }
+
+    $staleCachedStatus = Read-SystemToolsUpdateStatusCache -AllowStale
+    $remoteInfo = Get-RemoteSystemToolsMetadata
+    if ($null -eq $remoteInfo) {
+        if ($null -ne $staleCachedStatus) {
+            $staleCachedStatus.Message = 'Using cached update status because the latest version could not be reached.'
+            $script:SystemToolsUpdateStatus = $staleCachedStatus
+            return $script:SystemToolsUpdateStatus
+        }
+
+        $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus -LocalVersion $script:SystemToolsAppVersion -Repo $script:SystemToolsGitHubRepo -Status 'Error' -Message 'Could not reach GitHub to check the latest version.' -CheckedAt ((Get-Date).ToString('s'))
+        return $script:SystemToolsUpdateStatus
+    }
+
+    $latestVersionProperty = $remoteInfo.Metadata.PSObject.Properties['version']
+    $latestVersion = if ($null -ne $latestVersionProperty) { [string]$latestVersionProperty.Value } else { '' }
+    $localVersionObject = ConvertTo-SystemToolsVersion -VersionText $script:SystemToolsAppVersion
+    $remoteVersionObject = ConvertTo-SystemToolsVersion -VersionText $latestVersion
+    $statusName = 'Unknown'
+    $statusMessage = 'Update status is unavailable.'
+
+    if ($null -ne $localVersionObject -and $null -ne $remoteVersionObject) {
+        if ($localVersionObject -lt $remoteVersionObject) {
+            $statusName = 'UpdateAvailable'
+            $statusMessage = "Update available: v$latestVersion"
+        }
+        elseif ($localVersionObject -gt $remoteVersionObject) {
+            $statusName = 'LocalAhead'
+            $statusMessage = "Local version v$script:SystemToolsAppVersion is ahead of origin."
+        }
+        else {
+            $statusName = 'UpToDate'
+            $statusMessage = "App is up to date at v$latestVersion."
+        }
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($latestVersion) -and $latestVersion -eq $script:SystemToolsAppVersion) {
+        $statusName = 'UpToDate'
+        $statusMessage = "App is up to date at v$latestVersion."
+    }
+
+    $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus `
+        -LocalVersion $script:SystemToolsAppVersion `
+        -LatestVersion $latestVersion `
+        -Repo ([string]$remoteInfo.Repo) `
+        -Branch ([string]$remoteInfo.Branch) `
+        -Status $statusName `
+        -Message $statusMessage `
+        -CheckedAt ((Get-Date).ToString('s'))
+
+    Write-SystemToolsUpdateStatusCache -Status $script:SystemToolsUpdateStatus
+    return $script:SystemToolsUpdateStatus
+}
+
+function Get-SystemToolsUpdateStatusPresentation {
+    if ($null -eq $script:SystemToolsUpdateStatus) {
+        $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus
+    }
+
+    $label = 'Status unavailable'
+    $color = $_C.Dim
+    switch ([string]$script:SystemToolsUpdateStatus.Status) {
+        'UpToDate' {
+            $label = 'Up to date'
+            $color = $_C.OK
+        }
+        'UpdateAvailable' {
+            $label = if ([string]::IsNullOrWhiteSpace([string]$script:SystemToolsUpdateStatus.LatestVersion)) { 'Update available' } else { "Update available ($($script:SystemToolsUpdateStatus.LatestVersion))" }
+            $color = $_C.Warn
+        }
+        'LocalAhead' {
+            $label = 'Local version ahead'
+            $color = $_C.Info
+        }
+        'Error' {
+            $label = 'Update check failed'
+            $color = $_C.Fail
+        }
+    }
+
+    [pscustomobject]@{
+        Label         = $label
+        Color         = $color
+        LatestVersion = [string]$script:SystemToolsUpdateStatus.LatestVersion
+        LocalVersion  = [string]$script:SystemToolsUpdateStatus.LocalVersion
+        Repo          = [string]$script:SystemToolsUpdateStatus.Repo
+        Branch        = [string]$script:SystemToolsUpdateStatus.Branch
+        Message       = [string]$script:SystemToolsUpdateStatus.Message
+        CheckedAt     = [string]$script:SystemToolsUpdateStatus.CheckedAt
+    }
+}
 
 function Get-RegPathKey {
     param([Parameter(Mandatory)][string]$CurrentScope)
@@ -106,24 +399,30 @@ function Contains-Path {
 function Add-PathEntry {
     param(
         [Parameter(Mandatory)][string]$CurrentScope,
-        [Parameter(Mandatory)][string]$PathToAdd
+        [Parameter(Mandatory)][string]$PathToAdd,
+        [switch]$Quiet
     )
 
     $entries = Get-PathEntries -CurrentScope $CurrentScope
     if (Contains-Path -Entries $entries -Needle $PathToAdd) {
-        Write-Host "Already present in $CurrentScope PATH: $PathToAdd" -ForegroundColor Yellow
+        if (-not $Quiet) {
+            Write-Host "Already present in $CurrentScope PATH: $PathToAdd" -ForegroundColor Yellow
+        }
         return
     }
 
     $entries.Add($PathToAdd)
     Save-PathEntries -CurrentScope $CurrentScope -Entries $entries
-    Write-Host "Added to $CurrentScope PATH: $PathToAdd" -ForegroundColor Green
+    if (-not $Quiet) {
+        Write-Host "Added to $CurrentScope PATH: $PathToAdd" -ForegroundColor Green
+    }
 }
 
 function Remove-PathEntry {
     param(
         [Parameter(Mandatory)][string]$CurrentScope,
-        [Parameter(Mandatory)][string]$PathToRemove
+        [Parameter(Mandatory)][string]$PathToRemove,
+        [switch]$Quiet
     )
 
     $entries = Get-PathEntries -CurrentScope $CurrentScope
@@ -141,12 +440,16 @@ function Remove-PathEntry {
     }
 
     if (-not $removed) {
-        Write-Host "Not found in $CurrentScope PATH: $PathToRemove" -ForegroundColor Yellow
+        if (-not $Quiet) {
+            Write-Host "Not found in $CurrentScope PATH: $PathToRemove" -ForegroundColor Yellow
+        }
         return
     }
 
     Save-PathEntries -CurrentScope $CurrentScope -Entries $newEntries
-    Write-Host "Removed from $CurrentScope PATH: $PathToRemove" -ForegroundColor Green
+    if (-not $Quiet) {
+        Write-Host "Removed from $CurrentScope PATH: $PathToRemove" -ForegroundColor Green
+    }
 }
 
 function Broadcast-EnvironmentChange {
@@ -180,7 +483,7 @@ public static class NativeEnvBroadcast {
         [IntPtr]::Zero,
         'Environment',
         $SMTO_ABORTIFHUNG,
-        2000,
+        150,
         [ref]$result
     )
 }
@@ -470,7 +773,8 @@ function Invoke-PathAction {
         [Parameter(Mandatory)][ValidateSet('Status', 'Add', 'Remove', 'Toggle')] [string]$RequestedAction,
         [Parameter(Mandatory)][string]$RequestedScope,
         [Parameter(Mandatory)][string]$PathToUse,
-        [switch]$SkipStatusOutput
+        [switch]$SkipStatusOutput,
+        [switch]$Quiet
     )
 
     switch ($RequestedAction) {
@@ -479,7 +783,7 @@ function Invoke-PathAction {
         }
         'Add' {
             Assert-AdminForMachine -CurrentScope $RequestedScope
-            Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse
+            Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse -Quiet:$Quiet
             Broadcast-EnvironmentChange
             if (-not $SkipStatusOutput) {
                 Show-Status -PathToCheck $PathToUse
@@ -487,7 +791,7 @@ function Invoke-PathAction {
         }
         'Remove' {
             Assert-AdminForMachine -CurrentScope $RequestedScope
-            Remove-PathEntry -CurrentScope $RequestedScope -PathToRemove $PathToUse
+            Remove-PathEntry -CurrentScope $RequestedScope -PathToRemove $PathToUse -Quiet:$Quiet
             Broadcast-EnvironmentChange
             if (-not $SkipStatusOutput) {
                 Show-Status -PathToCheck $PathToUse
@@ -497,10 +801,10 @@ function Invoke-PathAction {
             Assert-AdminForMachine -CurrentScope $RequestedScope
             $entries = Get-PathEntries -CurrentScope $RequestedScope
             if (Contains-Path -Entries $entries -Needle $PathToUse) {
-                Remove-PathEntry -CurrentScope $RequestedScope -PathToRemove $PathToUse
+                Remove-PathEntry -CurrentScope $RequestedScope -PathToRemove $PathToUse -Quiet:$Quiet
             }
             else {
-                Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse
+                Add-PathEntry -CurrentScope $RequestedScope -PathToAdd $PathToUse -Quiet:$Quiet
             }
             Broadcast-EnvironmentChange
             if (-not $SkipStatusOutput) {
@@ -612,66 +916,306 @@ function Open-EnvSnapshotPane {
     Start-Process -FilePath 'wt.exe' -ArgumentList $argList | Out-Null
 }
 
-function Show-Menu {
-    param([Parameter(Mandatory)][string]$PathToUse)
+function Invoke-MenuPathToggle {
+    param(
+        [Parameter(Mandatory)][ValidateSet('User', 'Machine')] [string]$CurrentScope,
+        [Parameter(Mandatory)][string]$PathToUse
+    )
 
-    while ($true) {
-        Clear-Host
-        $status = Get-PathStatus -PathToCheck $PathToUse
+    $entries = Get-PathEntries -CurrentScope $CurrentScope
+    $wasPresent = Contains-Path -Entries $entries -Needle $PathToUse
 
-        Write-Host ''
-        Write-Separator -Text '⚙️  System Tools - PATH Manager' -Color DarkCyan
-        Write-Host "📁 Target Folder : $PathToUse" -ForegroundColor Cyan
-        Write-Host ('🛡  Session Mode  : ' + ($(if (Test-IsAdministrator) { 'Admin' } else { 'Standard User' }))) -ForegroundColor Cyan
-        Write-Host ('👤 User PATH     : ' + ($(if ($status.InUser) { '✅ YES' } else { '❌ NO' }))) -ForegroundColor Yellow
-        Write-Host ('🖥  Machine PATH  : ' + ($(if ($status.InMachine) { '✅ YES' } else { '❌ NO' }))) -ForegroundColor Yellow
-        Write-Host ''
-        Write-Host '[1] 🔁 Toggle User PATH' -ForegroundColor Green
-        Write-Host '[2] 🔁 Toggle Machine PATH (Admin)' -ForegroundColor Magenta
-        Write-Host '[3] 🌿 Toggle full ENV snapshot (split pane in WT)' -ForegroundColor Yellow
-        Write-Host '[4] 💾 Export ENV snapshot (MD)' -ForegroundColor Cyan
-        Write-Host '[0] Exit'
-        Write-Host ''
+    Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope $CurrentScope -PathToUse $PathToUse -SkipStatusOutput -Quiet
 
-        $choice = Read-Host 'Choose option'
-        if ($choice -eq '0') { break }
-        # Option 3 is intentionally no-pause in main menu.
-        $shouldPause = ($choice -ne '3')
+    if ($wasPresent) {
+        return "Removed from $CurrentScope PATH: $PathToUse"
+    }
 
+    return "Added to $CurrentScope PATH: $PathToUse"
+}
+
+function Get-SystemToolsInstallerAction {
+    $installMetaPath = Join-Path $script:SystemToolsRootPath 'state\install-meta.json'
+    if (Test-Path -LiteralPath $installMetaPath -PathType Leaf) {
         try {
-            switch ($choice) {
-                '1' {
-                    Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'User' -PathToUse $PathToUse -SkipStatusOutput
+            $installMeta = Get-Content -LiteralPath $installMetaPath -Raw | ConvertFrom-Json
+            $installPathProperty = $installMeta.PSObject.Properties['install_path']
+            if ($null -ne $installPathProperty -and -not [string]::IsNullOrWhiteSpace([string]$installPathProperty.Value)) {
+                $recordedPath = [System.IO.Path]::GetFullPath([string]$installPathProperty.Value).TrimEnd('\')
+                $rootPath = [System.IO.Path]::GetFullPath($script:SystemToolsRootPath).TrimEnd('\')
+                if ($recordedPath -ieq $rootPath) {
+                    return 'UpdateGitHub'
                 }
-                '2' {
-                    if (Test-IsAdministrator) {
-                        Invoke-PathAction -RequestedAction 'Toggle' -RequestedScope 'Machine' -PathToUse $PathToUse -SkipStatusOutput
-                    }
-                    else {
-                        Invoke-ElevatedMachineAction -RequestedAction 'Toggle' -PathToUse $PathToUse
-                    }
-                }
-                '3' {
-                    $shouldPause = $false
-                    Open-EnvSnapshotPane -PathToUse $PathToUse
-                }
-                '4' {
-                    $desktop = [Environment]::GetFolderPath('Desktop')
-                    $exportDir = Read-Host "Export directory (blank = $desktop)"
-                    if ([string]::IsNullOrWhiteSpace($exportDir)) { $exportDir = $desktop }
-                    Export-EnvironmentSnapshot -Directory $exportDir -Format 'Md'
-                }
-                default { Write-Host 'Invalid option.' -ForegroundColor Yellow }
             }
         }
         catch {
-            Write-Host $_.Exception.Message -ForegroundColor Red
+        }
+    }
+
+    $defaultInstallPath = [System.IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'SystemToolsContext')).TrimEnd('\')
+    $currentRootPath = [System.IO.Path]::GetFullPath($script:SystemToolsRootPath).TrimEnd('\')
+    if ($currentRootPath -ieq $defaultInstallPath) {
+        return 'UpdateGitHub'
+    }
+
+    return 'DownloadLatest'
+}
+
+function Invoke-SystemToolsInPlaceUpdate {
+    $installerPath = Join-Path $script:SystemToolsRootPath 'Install.ps1'
+    if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
+        return [pscustomobject]@{
+            Success = $false
+            Message = 'Install.ps1 was not found next to this script.'
+            Lines   = @()
+        }
+    }
+
+    $action = Get-SystemToolsInstallerAction
+    $pwshCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    if ($null -eq $pwshCommand -or -not (Test-Path -LiteralPath $pwshCommand.Source -PathType Leaf)) {
+        return [pscustomobject]@{
+            Success = $false
+            Message = 'pwsh.exe was not found.'
+            Lines   = @()
+        }
+    }
+
+    $stdoutPath = Join-Path $env:TEMP ("SystemTools_updater_out_{0}.log" -f [guid]::NewGuid().ToString('N'))
+    $stderrPath = Join-Path $env:TEMP ("SystemTools_updater_err_{0}.log" -f [guid]::NewGuid().ToString('N'))
+    $installerLogPath = Join-Path $script:SystemToolsRootPath 'logs\installer.log'
+    $installerArgs = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $installerPath,
+        '-Action', $action,
+        '-Force'
+    )
+
+    if ($action -eq 'UpdateGitHub') {
+        $installerArgs += '-NoExplorerRestart'
+    }
+    if ($action -eq 'DownloadLatest') {
+        $installerArgs += '-NoSelfRelaunch'
+    }
+
+    try {
+        $process = Start-Process -FilePath $pwshCommand.Source -ArgumentList $installerArgs -WorkingDirectory $script:SystemToolsRootPath -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -WindowStyle Hidden -PassThru
+    }
+    catch {
+        return [pscustomobject]@{
+            Success = $false
+            Message = "Could not start updater: $($_.Exception.Message)"
+            Lines   = @()
+        }
+    }
+
+    try {
+        while (-not $process.HasExited) {
+            Clear-Host
+            Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'Updating app'
+            Write-Host "  $($_C.H2)Action:$($_C.Reset) $($_C.White)$action$($_C.Reset)"
+            Write-Host "  $($_C.H2)Status:$($_C.Reset) $($_C.Info)Updating...$($_C.Reset)"
+            Write-Host ''
+            foreach ($line in @(Get-RecentTextLines -Path $installerLogPath -TailCount 8)) {
+                Write-Host "  $($_C.Dim)$line$($_C.Reset)"
+            }
+            Start-Sleep -Milliseconds 300
         }
 
-        if ($shouldPause) {
-            Write-Host ''
-            Read-Host 'Press Enter to continue'
+        $process.Refresh()
+        $recentLines = @((Get-RecentTextLines -Path $installerLogPath -TailCount 8) + (Get-RecentTextLines -Path $stderrPath -TailCount 4))
+        $exitCode = [int]$process.ExitCode
+        return [pscustomobject]@{
+            Success = ($exitCode -eq 0)
+            Message = if ($exitCode -eq 0) { 'Update completed. Reopen PATH Manager to use the refreshed app.' } else { "Update failed with exit code $exitCode." }
+            Lines   = $recentLines
         }
+    }
+    finally {
+        foreach ($tempPath in @($stdoutPath, $stderrPath)) {
+            try {
+                if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
+                    Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+            catch {
+            }
+        }
+    }
+}
+
+function Get-RecentTextLines {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [int]$TailCount = 8
+    )
+
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            return @(Get-Content -LiteralPath $Path -Tail $TailCount -ErrorAction Stop)
+        }
+    }
+    catch {
+    }
+
+    return @()
+}
+
+function Show-SystemToolsUpdateMenu {
+    $options = @(
+        'Run update now',
+        'Refresh update status',
+        'Back'
+    )
+
+    while ($true) {
+        $status = Get-SystemToolsUpdateStatusPresentation
+        $action = Get-SystemToolsInstallerAction
+        $targetLabel = if ($action -eq 'DownloadLatest') { 'Workspace working copy' } else { 'Installed app copy' }
+        $methodLabel = if ($action -eq 'DownloadLatest') { 'Download latest into this folder' } else { 'Installer/GitHub in-place update' }
+        $latestLabel = if ([string]::IsNullOrWhiteSpace($status.LatestVersion)) { '--' } else { $status.LatestVersion }
+        $branchLabel = if ([string]::IsNullOrWhiteSpace($status.Branch)) { '--' } else { $status.Branch }
+        $checkedAtLabel = if ([string]::IsNullOrWhiteSpace($status.CheckedAt)) { '--' } else { $status.CheckedAt.Replace('T', ' ') }
+
+        $headerBlock = {
+            Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'PATH Manager'
+            Write-Host "  $($_C.H2)Current version:$($_C.Reset) $($_C.Info)$script:SystemToolsAppVersion$($_C.Reset)"
+            Write-Host "  $($_C.H2)Latest version :$($_C.Reset) $($_C.Info)$latestLabel$($_C.Reset)"
+            Write-Host "  $($_C.H2)Update        :$($_C.Reset) $($status.Color)$($status.Label)$($_C.Reset)"
+            Write-Host "  $($_C.H2)Repo / branch :$($_C.Reset) $($_C.Info)$($status.Repo)$($_C.Reset) $($_C.Dim)|$($_C.Reset) $($_C.Info)$branchLabel$($_C.Reset)"
+            Write-Host "  $($_C.H2)Target        :$($_C.Reset) $($_C.Info)$targetLabel$($_C.Reset)"
+            Write-Host "  $($_C.H2)Method        :$($_C.Reset) $($_C.Info)$methodLabel$($_C.Reset)"
+            Write-Host "  $($_C.H2)Last check    :$($_C.Reset) $($_C.Dim)$checkedAtLabel$($_C.Reset)"
+            if (-not [string]::IsNullOrWhiteSpace($status.Message)) {
+                Write-Host "  $($_C.H2)Message       :$($_C.Reset) $($_C.Dim)$($status.Message)$($_C.Reset)"
+            }
+            Write-Host ''
+        }
+
+        $choice = Invoke-ArrowMenu -Items $options -Title 'Update App' -HeaderBlock $headerBlock
+        if ($null -eq $choice -or $choice -eq 'Back') { return }
+
+        switch ($choice) {
+            'Refresh update status' {
+                [void](Resolve-SystemToolsUpdateStatus -ForceRefresh)
+            }
+            'Run update now' {
+                $result = Invoke-SystemToolsInPlaceUpdate
+                Clear-Host
+                Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'Update result'
+                $tone = if ($result.Success) { $_C.OK } else { $_C.Fail }
+                Write-Host "  $tone$($result.Message)$($_C.Reset)"
+                Write-Host ''
+                foreach ($line in @($result.Lines)) {
+                    Write-Host "  $($_C.Dim)$line$($_C.Reset)"
+                }
+                Write-Host ''
+                Read-Host "$($_C.Dim)Press Enter to return to menu...$($_C.Reset)" | Out-Null
+                [void](Resolve-SystemToolsUpdateStatus -ForceRefresh)
+            }
+        }
+    }
+}
+
+function Show-Menu {
+    param([Parameter(Mandatory)][string]$PathToUse)
+
+    $hasUi = Import-SystemToolsUi
+    if (-not $hasUi) {
+        throw 'PS_UI_Blueprint.psm1 was not found under .codex\tools. Install/restore the canonical blueprint first.'
+    }
+
+    Initialize-SystemToolsAppMetadata
+    [void](Resolve-SystemToolsUpdateStatus)
+
+    Initialize-TuiHost
+    try {
+        $options = @(
+            'Toggle User PATH',
+            'Toggle Machine PATH (Admin)',
+            'Open ENV snapshot pane',
+            'Export ENV snapshot (MD)',
+            'Update app',
+            'Exit'
+        )
+        $lastMessage = ''
+        $lastTone = 'Info'
+
+        while ($true) {
+            $status = Get-PathStatus -PathToCheck $PathToUse
+            $sessionMode = if (Test-IsAdministrator) { 'Admin' } else { 'Standard User' }
+            $userBadge = if ($status.InUser) { 'YES' } else { 'NO' }
+            $machineBadge = if ($status.InMachine) { 'YES' } else { 'NO' }
+            $updateStatus = Get-SystemToolsUpdateStatusPresentation
+
+            $headerBlock = {
+                Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'Resize-safe PATH and environment control'
+                Write-Host "  $($_C.H2)Update        : $($updateStatus.Color)$($updateStatus.Label)$($_C.Reset)"
+                Write-Host "  $($_C.H2)Target Folder : $($_C.Info)$PathToUse$($_C.Reset)"
+                Write-Host "  $($_C.H2)Session Mode  : $($_C.Info)$sessionMode$($_C.Reset)"
+                Write-Host "  $($_C.H2)User PATH     : $(if ($status.InUser) { $_C.OK } else { $_C.Fail })$userBadge$($_C.Reset)"
+                Write-Host "  $($_C.H2)Machine PATH  : $(if ($status.InMachine) { $_C.OK } else { $_C.Fail })$machineBadge$($_C.Reset)"
+                if (-not [string]::IsNullOrWhiteSpace($lastMessage)) {
+                    $tone = if ($lastTone -eq 'Error') { $_C.Fail } elseif ($lastTone -eq 'Warn') { $_C.Warn } else { $_C.OK }
+                    Write-Host "  $($_C.H2)Last Action   : $tone$lastMessage$($_C.Reset)"
+                }
+                Write-Host ''
+            }
+
+            $choice = Invoke-ArrowMenu -Items $options -Title 'Choose Action' -HeaderBlock $headerBlock
+            if ($null -eq $choice -or $choice -eq 'Exit') { break }
+
+            try {
+                switch ($choice) {
+                    'Toggle User PATH' {
+                        $lastMessage = Invoke-MenuPathToggle -CurrentScope 'User' -PathToUse $PathToUse
+                        $lastTone = 'Info'
+                        continue
+                    }
+                    'Toggle Machine PATH (Admin)' {
+                        if (Test-IsAdministrator) {
+                            $lastMessage = Invoke-MenuPathToggle -CurrentScope 'Machine' -PathToUse $PathToUse
+                            $lastTone = 'Info'
+                        }
+                        else {
+                            Invoke-ElevatedMachineAction -RequestedAction 'Toggle' -PathToUse $PathToUse
+                            $lastMessage = "Machine PATH toggle completed in elevated helper: $PathToUse"
+                            $lastTone = 'Info'
+                        }
+                        continue
+                    }
+                    'Open ENV snapshot pane' {
+                        Open-EnvSnapshotPane -PathToUse $PathToUse
+                        $lastMessage = 'Opened ENV snapshot pane.'
+                        $lastTone = 'Info'
+                        continue
+                    }
+                    'Export ENV snapshot (MD)' {
+                        Clear-Host
+                        $desktop = [Environment]::GetFolderPath('Desktop')
+                        $exportDir = Read-Host "Export directory (blank = $desktop)"
+                        if ([string]::IsNullOrWhiteSpace($exportDir)) { $exportDir = $desktop }
+                        Export-EnvironmentSnapshot -Directory $exportDir -Format 'Md'
+                        $lastMessage = "Exported ENV snapshot to: $exportDir"
+                        $lastTone = 'Info'
+                        Write-Host ''
+                        Read-Host "$($_C.Dim)Press Enter to return to menu...$($_C.Reset)" | Out-Null
+                    }
+                    'Update app' {
+                        Show-SystemToolsUpdateMenu
+                        continue
+                    }
+                }
+            }
+            catch {
+                $lastMessage = $_.Exception.Message
+                $lastTone = 'Error'
+            }
+        }
+    }
+    finally {
+        Restore-TuiHost
     }
 }
 
