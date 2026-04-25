@@ -86,7 +86,7 @@ $totalDeleted = 0
 $totalFailed  = 0
 
 # Icon cache files
-$iconFiles = @(Get-ChildItem "$CacheDir\iconcache*" -Force -ErrorAction SilentlyContinue)
+$iconFiles = @(Get-ChildItem "$CacheDir\iconcache*" -File -Force -ErrorAction SilentlyContinue)
 foreach ($f in $iconFiles) {
     try {
         Remove-Item $f.FullName -Force -ErrorAction Stop
