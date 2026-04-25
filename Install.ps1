@@ -41,15 +41,18 @@ $script:ProfileJson = @'
     "Export-EnvReadable.ps1",
     "RestartExplorer.ps1",
     "RefreshShell.ps1",
+    "Clear-IconCache.ps1",
     "Toggle-PSRemoting.ps1",
     "Install-SystemToolsMenu.ps1",
     "Launch-SystemToolsMenu.vbs",
     "Launch-RestartExplorer.vbs",
     "Launch-RefreshShell.vbs",
+    "Launch-ClearIconCache.vbs",
     ".assets",
     ".assets\\icons\\folder_to_path.ico",
     ".assets\\icons\\restart_explorer.ico",
-    ".assets\\icons\\refresh_shell.ico"
+    ".assets\\icons\\refresh_shell.ico",
+    ".assets\\icons\\Clear-IconCache.ico"
   ],
   "deploy_entries": [
     "app-metadata.json",
@@ -58,11 +61,13 @@ $script:ProfileJson = @'
     "Export-EnvReadable.ps1",
     "RestartExplorer.ps1",
     "RefreshShell.ps1",
+    "Clear-IconCache.ps1",
     "Toggle-PSRemoting.ps1",
     "Install-SystemToolsMenu.ps1",
     "Launch-SystemToolsMenu.vbs",
     "Launch-RestartExplorer.vbs",
     "Launch-RefreshShell.vbs",
+    "Launch-ClearIconCache.vbs",
     ".assets"
   ],
   "preserve_existing_entries": [],
@@ -73,14 +78,17 @@ $script:ProfileJson = @'
     "Export-EnvReadable.ps1",
     "RestartExplorer.ps1",
     "RefreshShell.ps1",
+    "Clear-IconCache.ps1",
     "Toggle-PSRemoting.ps1",
     "Install-SystemToolsMenu.ps1",
     "Launch-SystemToolsMenu.vbs",
     "Launch-RestartExplorer.vbs",
     "Launch-RefreshShell.vbs",
+    "Launch-ClearIconCache.vbs",
     ".assets\\icons\\folder_to_path.ico",
     ".assets\\icons\\restart_explorer.ico",
-    ".assets\\icons\\refresh_shell.ico"
+    ".assets\\icons\\refresh_shell.ico",
+    ".assets\\icons\\Clear-IconCache.ico"
   ],
   "migration_copy_entries": [
     "logs",
@@ -191,6 +199,24 @@ $script:ProfileJson = @'
       "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
     },
     {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Clear Icon Cache"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
+    },
+    {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
       "name": "MUIVerb",
       "type": "REG_SZ",
@@ -263,6 +289,24 @@ $script:ProfileJson = @'
       "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
     },
     {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Clear Icon Cache"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
+    },
+    {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
       "name": "MUIVerb",
       "type": "REG_SZ",
@@ -321,6 +365,24 @@ $script:ProfileJson = @'
       "name": "(default)",
       "type": "REG_SZ",
       "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Clear Icon Cache"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
     }
   ],
   "registry_verify": [
@@ -350,6 +412,16 @@ $script:ProfileJson = @'
       "expected": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
     },
     {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "expected": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
+    },
+    {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
       "name": "SubCommands",
       "expected": ""
@@ -370,6 +442,16 @@ $script:ProfileJson = @'
       "expected": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
     },
     {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "expected": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
+    },
+    {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
       "name": "SubCommands",
       "expected": ""
@@ -388,6 +470,16 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\RefreshShell\\command",
       "name": "(default)",
       "expected": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\ClearIconCache",
+      "name": "Icon",
+      "expected": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\ClearIconCache\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
     }
   ],
   "wrapper_patches": [
@@ -405,6 +497,11 @@ $script:ProfileJson = @'
       "file": "Launch-RefreshShell.vbs",
       "regex": "scriptPath\\s*=\\s*\"[^\"]+\"",
       "replacement": "scriptPath = \"{InstallRoot}\\RefreshShell.ps1\""
+    },
+    {
+      "file": "Launch-ClearIconCache.vbs",
+      "regex": "scriptPath\\s*=\\s*\"[^\"]+\"",
+      "replacement": "scriptPath = \"{InstallRoot}\\Clear-IconCache.ps1\""
     }
   ]
 }

@@ -4,3 +4,6 @@ Env-Readable-*.md
 
 # Local test artifacts
 __toggle_test/
+env/
+state/
+scratch_*.ps1

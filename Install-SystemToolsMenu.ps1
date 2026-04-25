@@ -28,6 +28,7 @@ $iconsDir   = Join-Path $scriptRoot '.assets\icons'
 $toolScript = Join-Path $scriptRoot 'AddDelPath.ps1'
 $restartScript = Join-Path $scriptRoot 'RestartExplorer.ps1'
 $refreshScript = Join-Path $scriptRoot 'RefreshShell.ps1'
+$clearIconCacheScript = Join-Path $scriptRoot 'Clear-IconCache.ps1'
 
 if (-not (Test-Path -LiteralPath $toolScript)) {
     throw "Missing required script: $toolScript"
@@ -39,6 +40,10 @@ if (-not (Test-Path -LiteralPath $restartScript)) {
 
 if (-not (Test-Path -LiteralPath $refreshScript)) {
     throw "Missing required script: $refreshScript"
+}
+
+if (-not (Test-Path -LiteralPath $clearIconCacheScript)) {
+    throw "Missing required script: $clearIconCacheScript"
 }
 
 function Reg-Run([string[]]$RegArgs, [switch]$IgnoreNotFound, [switch]$IgnoreAccessDenied) {
@@ -90,6 +95,11 @@ function Install-Menu {
     Add-Value -Key $refreshShellKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
     Add-Value -Key "$refreshShellKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
 
+    $clearIconCacheKey = "$directoryBaseKey\shell\ClearIconCache"
+    Add-Value -Key $clearIconCacheKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Clear Icon Cache'
+    Add-Value -Key $clearIconCacheKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\Clear-IconCache.ico"
+    Add-Value -Key "$clearIconCacheKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
+
     Add-Value -Key $backgroundBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
     Add-Value -Key $backgroundBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
     Add-Value -Key $backgroundBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
@@ -109,6 +119,11 @@ function Install-Menu {
     Add-Value -Key $backgroundRefreshKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
     Add-Value -Key "$backgroundRefreshKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
 
+    $backgroundClearIconCacheKey = "$backgroundBaseKey\shell\ClearIconCache"
+    Add-Value -Key $backgroundClearIconCacheKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Clear Icon Cache'
+    Add-Value -Key $backgroundClearIconCacheKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\Clear-IconCache.ico"
+    Add-Value -Key "$backgroundClearIconCacheKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
+
     Add-Value -Key $desktopBaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
     Add-Value -Key $desktopBaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
     Add-Value -Key $desktopBaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
@@ -123,6 +138,11 @@ function Install-Menu {
     Add-Value -Key $desktopRefreshKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Refresh Shell'
     Add-Value -Key $desktopRefreshKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\refresh_shell.ico"
     Add-Value -Key "$desktopRefreshKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
+
+    $desktopClearIconCacheKey = "$desktopBaseKey\shell\ClearIconCache"
+    Add-Value -Key $desktopClearIconCacheKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Clear Icon Cache'
+    Add-Value -Key $desktopClearIconCacheKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\Clear-IconCache.ico"
+    Add-Value -Key "$desktopClearIconCacheKey\command" -Name '(default)' -Type 'REG_SZ' -Data "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
 
     Write-Host 'System Tools folder context menu installed.' -ForegroundColor Green
 }

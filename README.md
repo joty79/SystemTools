@@ -21,6 +21,7 @@
 | 🛡️ | **[PSRemoting Manager](#️-psremoting-manager)** | Interactive UI to safely manage WinRM and TrustedHosts |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
+| 🧹 | **[Clear Icon Cache](#-clear-icon-cache)** | Rebuild icon, thumbnail, and UWP AppIconCache — fixes broken Start Menu icons |
 
 ---
 
@@ -219,6 +220,64 @@ No processes killed. No windows closed. Just signals.
 
 ---
 
+## 🧹 Clear Icon Cache
+
+> Rebuild the Windows icon cache, thumbnail cache, and UWP AppIconCache to fix broken or missing icons.
+
+### The Problem
+
+After installing/uninstalling apps (especially image viewers like IrfanView, ACDSee, or Icaros), or when third-party thumbnail handlers (Google Drive) interfere with `.png` shell extensions:
+- UWP/Store app icons show as **generic PNG file type icons** in Start Menu and Search
+- File Explorer thumbnails are stale or broken
+- Context menu icons are wrong
+
+### The Solution
+
+Clear-IconCache kills **all shell processes** that lock cache files (not just Explorer — also SearchHost, ShellExperienceHost, StartMenuExperienceHost, TextInputHost), deletes all cache databases, and lets Windows auto-restart the shell cleanly.
+
+```
+Kill all shell processes → Delete iconcache*.db + thumbcache*.db + AppIconCache
+                        → ie4uinit -show (force icon refresh)
+                        → Winlogon auto-restarts Explorer (no zombie)
+                        → If files locked: RunOnce boot-time deletion
+```
+
+### Why Not BleachBit?
+
+| Feature | BleachBit | Clear-IconCache |
+|---------|:---------:|:---------------:|
+| Icon cache (`iconcache*.db`) | ❌ | ✅ |
+| Thumbnail cache (`thumbcache*.db`) | ✅ | ✅ (with `-Thumbnails`) |
+| UWP AppIconCache | ❌ | ✅ |
+| StartMenu TempState | ❌ | ✅ |
+| Kill ALL shell processes | ❌ (Explorer only) | ✅ |
+| Locked file handling | ❌ | ✅ (RunOnce fallback) |
+| Ghost process prevention | ❌ | ✅ (winlogon auto-restart) |
+
+### Usage
+
+**From context menu** — *Right-click a folder, folder background, or desktop background → System Tools → Clear Icon Cache*
+
+**From terminal (requires Admin):**
+
+```powershell
+# Rebuild icon cache only
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1
+
+# Rebuild icon + thumbnail cache
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -Thumbnails
+
+# Silent (no pause)
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -NoPause
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `-Thumbnails` | `switch` | Off | Also delete thumbnail cache (can be slow on large photo libraries) |
+| `-NoPause` | `switch` | Off | Skip `Press Enter to close` prompt |
+
+---
+
 ## 📦 Installation
 
 ### Recommended Installer
@@ -271,11 +330,13 @@ SystemTools/
 ├── Toggle-PSRemoting.ps1         # PSRemoting Manager — interactive WinRM UI
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
 ├── RefreshShell.ps1              # Refresh Shell — broadcast refresh signals
+├── Clear-IconCache.ps1           # Clear Icon Cache — rebuild icon/thumb/UWP caches
 ├── Install-SystemToolsMenu.ps1   # Registry installer/uninstaller
 ├── SystemToolsMenu.reg           # Manual registry import (alternative)
 ├── Launch-SystemToolsMenu.vbs    # VBS launcher (no console flash)
 ├── Launch-RestartExplorer.vbs    # VBS launcher (no console flash)
 ├── Launch-RefreshShell.vbs       # VBS launcher (no console flash)
+├── Launch-ClearIconCache.vbs     # Elevated WT launcher for Clear Icon Cache
 ├── PROJECT_RULES.md              # Decision log & guardrails
 └── README.md                     # You are here
 ```

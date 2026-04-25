@@ -6,11 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Clear Icon Cache** (`Clear-IconCache.ps1`): Comprehensive icon, thumbnail, and UWP AppIconCache rebuild script with `System Tools` context-menu integration on folder, folder background, and desktop background branches. Kills all shell processes (Explorer, SearchHost, ShellExperienceHost, StartMenuExperienceHost, TextInputHost) to release file locks, deletes all cache databases, uses `ie4uinit -show` for icon refresh, and schedules locked files for boot-time deletion via RunOnce. More thorough than BleachBit's thumbnail cleaner (which misses icon cache, AppIconCache, and locked file handling).
 - **PSRemoting Manager** (`Toggle-PSRemoting.ps1`): Interactive UI to safely Enable/Disable WinRM, and manage `TrustedHosts` (Add or Clear).
 - **Remote Environment Export**: `Export-EnvReadable.ps1` now supports fetching environment variables from a remote computer via PSRemoting/WinRM.
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.2**: Bumped `app-metadata.json` for the shipped Clear Icon Cache context-menu tool.
 - **Version 1.0.1**: Bumped `app-metadata.json` so installed copies can detect the current PATH Manager update through the existing version-based update UI.
 - **PATH Manager Update UI**: Added the InstallerCore-style `Update: ...` header status and `Update app` submenu inside the PATH Manager TUI.
 - **PATH Manager Update Status**: Added commit-aware update checks for installed copies that have InstallerCore `state\install-meta.json` metadata, so same-version hotfix commits can still show as updateable.

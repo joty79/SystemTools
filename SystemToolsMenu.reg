@@ -47,6 +47,14 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
 
+; Submenu: Clear Icon Cache
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\ClearIconCache]
+"MUIVerb"="Clear Icon Cache"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\ClearIconCache\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
+
 ; Parent menu (folder background)
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools]
 "MUIVerb"="System Tools"
@@ -77,6 +85,14 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
 
+; Submenu: Clear Icon Cache (folder background)
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\ClearIconCache]
+"MUIVerb"="Clear Icon Cache"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\ClearIconCache\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
+
 ; Parent menu (desktop background)
 [HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools]
 "MUIVerb"="System Tools"
@@ -99,3 +115,11 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
+
+; Submenu: Clear Icon Cache (desktop background)
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\ClearIconCache]
+"MUIVerb"="Clear Icon Cache"
+"Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
+
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\ClearIconCache\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
