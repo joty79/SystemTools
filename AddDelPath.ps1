@@ -77,29 +77,39 @@ function New-SystemToolsUpdateStatus {
     param(
         [string]$LocalVersion = $script:SystemToolsAppVersion,
         [AllowEmptyString()][string]$LatestVersion = '',
+        [AllowEmptyString()][string]$LocalCommit = '',
+        [AllowEmptyString()][string]$LatestCommit = '',
+        [AllowEmptyString()][string]$SourceKind = 'Unknown',
+        [bool]$HasLocalChanges = $false,
         [AllowEmptyString()][string]$Repo = $script:SystemToolsGitHubRepo,
         [AllowEmptyString()][string]$Branch = '',
-        [ValidateSet('Unknown', 'UpToDate', 'UpdateAvailable', 'LocalAhead', 'Error')]
+        [ValidateSet('Unknown', 'UpToDate', 'UpdateAvailable', 'LocalAhead', 'WorkspaceModified', 'Error')]
         [string]$Status = 'Unknown',
         [string]$Message = 'Update status has not been checked yet.',
         [AllowEmptyString()][string]$CheckedAt = '',
-        [AllowEmptyString()][string]$LocalCommit = '',
         [AllowEmptyString()][string]$RemoteCommit = '',
         [AllowEmptyString()][string]$Error = ''
     )
 
+    if ([string]::IsNullOrWhiteSpace($LatestCommit) -and -not [string]::IsNullOrWhiteSpace($RemoteCommit)) {
+        $LatestCommit = $RemoteCommit
+    }
+
     [pscustomobject]@{
         LocalVersion  = $LocalVersion
         LatestVersion = $LatestVersion
+        LocalCommit   = $LocalCommit
+        LatestCommit  = $LatestCommit
+        SourceKind    = $SourceKind
+        HasLocalChanges = $HasLocalChanges
         Repo          = $Repo
         Branch        = $Branch
         Status        = $Status
-        IsKnown       = ($Status -in @('UpToDate', 'UpdateAvailable', 'LocalAhead'))
+        IsKnown       = ($Status -in @('UpToDate', 'UpdateAvailable', 'LocalAhead', 'WorkspaceModified'))
         IsUpToDate    = ($Status -eq 'UpToDate')
         Message       = $Message
         CheckedAt     = $CheckedAt
-        LocalCommit   = $LocalCommit
-        RemoteCommit  = $RemoteCommit
+        RemoteCommit  = $LatestCommit
         Error         = $Error
     }
 }
@@ -142,6 +152,102 @@ function ConvertTo-SystemToolsVersion {
     catch { return $null }
 }
 
+function Get-SystemToolsOptionalPropertyValue {
+    param(
+        [object]$InputObject,
+        [string]$PropertyName,
+        $DefaultValue = $null
+    )
+
+    if ($null -eq $InputObject -or [string]::IsNullOrWhiteSpace($PropertyName)) {
+        return $DefaultValue
+    }
+
+    $property = $InputObject.PSObject.Properties[$PropertyName]
+    if ($null -eq $property) {
+        return $DefaultValue
+    }
+
+    return $property.Value
+}
+
+function Get-SystemToolsShortCommit {
+    param([AllowEmptyString()][string]$Commit)
+
+    if ([string]::IsNullOrWhiteSpace($Commit)) { return '' }
+    $normalizedCommit = $Commit.Trim()
+    if ($normalizedCommit.Length -le 7) { return $normalizedCommit }
+    return $normalizedCommit.Substring(0, 7)
+}
+
+function Get-SystemToolsCurrentSourceInfo {
+    $result = [ordered]@{
+        Commit          = ''
+        SourceKind      = 'Unknown'
+        HasLocalChanges = $false
+    }
+
+    if (Test-Path -LiteralPath $script:SystemToolsInstallMetaPath -PathType Leaf) {
+        try {
+            $installMeta = Get-Content -LiteralPath $script:SystemToolsInstallMetaPath -Raw | ConvertFrom-Json
+            $commit = [string](Get-SystemToolsOptionalPropertyValue -InputObject $installMeta -PropertyName 'github_commit' -DefaultValue '')
+            if (-not [string]::IsNullOrWhiteSpace($commit)) {
+                $result.Commit = $commit.Trim()
+                $result.SourceKind = 'Installed'
+                $dirty = Get-SystemToolsOptionalPropertyValue -InputObject $installMeta -PropertyName 'source_dirty' -DefaultValue $false
+                $result.HasLocalChanges = [bool]$dirty
+                return [pscustomobject]$result
+            }
+        }
+        catch {
+        }
+    }
+
+    if (Get-Command git.exe -ErrorAction SilentlyContinue) {
+        try {
+            $inside = (& git.exe -C $script:SystemToolsRootPath rev-parse --is-inside-work-tree 2>$null | Out-String).Trim()
+            if ($inside -eq 'true') {
+                $commit = (& git.exe -C $script:SystemToolsRootPath rev-parse HEAD 2>$null | Out-String).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($commit)) {
+                    $dirty = (& git.exe -C $script:SystemToolsRootPath status --porcelain 2>$null | Out-String).Trim()
+                    $result.Commit = $commit
+                    $result.SourceKind = 'Workspace'
+                    $result.HasLocalChanges = (-not [string]::IsNullOrWhiteSpace($dirty))
+                    return [pscustomobject]$result
+                }
+            }
+        }
+        catch {
+        }
+    }
+
+    $result.SourceKind = 'Portable'
+    return [pscustomobject]$result
+}
+
+function Test-SystemToolsLocalGitCommitContainsRemoteCommit {
+    param(
+        [AllowEmptyString()][string]$RemoteCommit,
+        [AllowEmptyString()][string]$LocalCommit
+    )
+
+    if (
+        [string]::IsNullOrWhiteSpace($RemoteCommit) -or
+        [string]::IsNullOrWhiteSpace($LocalCommit) -or
+        -not (Get-Command git.exe -ErrorAction SilentlyContinue)
+    ) {
+        return $false
+    }
+
+    try {
+        & git.exe -C $script:SystemToolsRootPath merge-base --is-ancestor $RemoteCommit $LocalCommit 2>$null
+        return ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        return $false
+    }
+}
+
 function Read-SystemToolsUpdateStatusCache {
     param([switch]$AllowStale)
 
@@ -150,22 +256,62 @@ function Read-SystemToolsUpdateStatusCache {
     }
 
     try {
-        $cacheItem = Get-Item -LiteralPath $script:SystemToolsUpdateStatusCachePath -ErrorAction Stop
-        if (-not $AllowStale -and ((Get-Date) - $cacheItem.LastWriteTime).TotalMinutes -gt $script:SystemToolsUpdateStatusCacheTtlMinutes) {
+        $cache = Get-Content -LiteralPath $script:SystemToolsUpdateStatusCachePath -Raw | ConvertFrom-Json
+        if (-not $AllowStale) {
+            $checkedAtText = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'CheckedAt' -DefaultValue '')
+            $checkedAt = [datetime]::MinValue
+            if ([string]::IsNullOrWhiteSpace($checkedAtText) -or -not [datetime]::TryParse($checkedAtText, [ref]$checkedAt)) {
+                return $null
+            }
+
+            if (((Get-Date) - $checkedAt).TotalMinutes -gt $script:SystemToolsUpdateStatusCacheTtlMinutes) {
+                return $null
+            }
+        }
+
+        $cachedStatusName = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'Status' -DefaultValue '')
+        if (-not $AllowStale -and $cachedStatusName -eq 'UpToDate') {
             return $null
         }
 
-        $cache = Get-Content -LiteralPath $script:SystemToolsUpdateStatusCachePath -Raw | ConvertFrom-Json
+        $localCommit = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'LocalCommit' -DefaultValue '')
+        $latestCommit = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'LatestCommit' -DefaultValue '')
+        if ([string]::IsNullOrWhiteSpace($latestCommit)) {
+            $latestCommit = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'RemoteCommit' -DefaultValue '')
+        }
+        $sourceKind = [string](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'SourceKind' -DefaultValue 'Unknown')
+        $hasLocalChanges = [bool](Get-SystemToolsOptionalPropertyValue -InputObject $cache -PropertyName 'HasLocalChanges' -DefaultValue $false)
+        $currentSourceInfo = Get-SystemToolsCurrentSourceInfo
+
+        if ([string]$cache.LocalVersion -ne [string]$script:SystemToolsAppVersion) {
+            return $null
+        }
+        if ([string]$currentSourceInfo.SourceKind -ne $sourceKind) {
+            return $null
+        }
+        if ([bool]$currentSourceInfo.HasLocalChanges -ne $hasLocalChanges) {
+            return $null
+        }
+        if (
+            -not [string]::IsNullOrWhiteSpace([string]$currentSourceInfo.Commit) -and
+            -not [string]::IsNullOrWhiteSpace($localCommit) -and
+            [string]$currentSourceInfo.Commit -ne $localCommit
+        ) {
+            return $null
+        }
+
         return (New-SystemToolsUpdateStatus `
             -LocalVersion ([string]$cache.LocalVersion) `
             -LatestVersion ([string]$cache.LatestVersion) `
+            -LocalCommit $localCommit `
+            -LatestCommit $latestCommit `
+            -SourceKind $sourceKind `
+            -HasLocalChanges $hasLocalChanges `
             -Repo ([string]$cache.Repo) `
             -Branch ([string]$cache.Branch) `
             -Status ([string]$cache.Status) `
             -Message ([string]$cache.Message) `
             -CheckedAt ([string]$cache.CheckedAt) `
-            -LocalCommit ([string]$cache.LocalCommit) `
-            -RemoteCommit ([string]$cache.RemoteCommit) `
             -Error ([string]$cache.Error))
     }
     catch {
@@ -186,10 +332,130 @@ function Write-SystemToolsUpdateStatusCache {
     }
 }
 
+function Get-SystemToolsGitHubApiHeaders {
+    $headers = @{
+        'User-Agent' = "$($script:SystemToolsAppName)/$($script:SystemToolsAppVersion)"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+        $headers['Authorization'] = "Bearer $($env:GITHUB_TOKEN)"
+    }
+
+    return $headers
+}
+
+function ConvertTo-SystemToolsGitHubRepoSlugFromRemoteUrl {
+    param([AllowEmptyString()][string]$RemoteUrl)
+
+    if ([string]::IsNullOrWhiteSpace($RemoteUrl)) { return '' }
+    $match = [regex]::Match($RemoteUrl.Trim(), 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/#?]+?)(?:\.git)?(?:[/#?].*)?$', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $match.Success) { return '' }
+    return ('{0}/{1}' -f $match.Groups['owner'].Value, $match.Groups['repo'].Value).ToLowerInvariant()
+}
+
+function Get-SystemToolsGitRemoteTarget {
+    param([AllowEmptyString()][string]$Repo = $script:SystemToolsGitHubRepo)
+
+    if ([string]::IsNullOrWhiteSpace($Repo) -or -not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
+        return ''
+    }
+
+    $expectedRepo = $Repo.Trim().ToLowerInvariant()
+    try {
+        $inside = (& git.exe -C $script:SystemToolsRootPath rev-parse --is-inside-work-tree 2>$null | Out-String).Trim()
+        if ($inside -eq 'true') {
+            foreach ($remoteName in @(& git.exe -C $script:SystemToolsRootPath remote 2>$null)) {
+                $name = [string]$remoteName
+                if ([string]::IsNullOrWhiteSpace($name)) { continue }
+                $remoteUrl = (& git.exe -C $script:SystemToolsRootPath remote get-url $name 2>$null | Out-String).Trim()
+                if ((ConvertTo-SystemToolsGitHubRepoSlugFromRemoteUrl -RemoteUrl $remoteUrl) -eq $expectedRepo) {
+                    return $name.Trim()
+                }
+            }
+        }
+    }
+    catch {
+    }
+
+    return ("https://github.com/{0}.git" -f $Repo.Trim())
+}
+
+function Resolve-RemoteSystemToolsCommit {
+    param(
+        [AllowEmptyString()][string]$Repo = $script:SystemToolsGitHubRepo,
+        [AllowEmptyString()][string]$Ref = ''
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Repo) -or [string]::IsNullOrWhiteSpace($Ref)) { return '' }
+
+    if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+        try {
+            $commit = (& gh.exe api "repos/$Repo/commits/$Ref" --jq '.sha' 2>$null | Out-String).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($commit)) { return $commit }
+        }
+        catch {
+        }
+    }
+
+    try {
+        $commitInfo = Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}/commits/{1}" -f $Repo, $Ref) -Headers (Get-SystemToolsGitHubApiHeaders) -TimeoutSec 5 -ErrorAction Stop
+        $commit = [string]$commitInfo.sha
+        if (-not [string]::IsNullOrWhiteSpace($commit)) { return $commit }
+    }
+    catch {
+    }
+
+    $gitRemoteTarget = Get-SystemToolsGitRemoteTarget -Repo $Repo
+    if (-not [string]::IsNullOrWhiteSpace($gitRemoteTarget) -and (Get-Command git.exe -ErrorAction SilentlyContinue)) {
+        foreach ($candidateRef in @("refs/heads/$Ref", $Ref)) {
+            try {
+                $remoteLine = (& git.exe -C $script:SystemToolsRootPath ls-remote $gitRemoteTarget $candidateRef 2>$null | Select-Object -First 1 | Out-String).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($remoteLine)) {
+                    $commit = ($remoteLine -split '\s+')[0]
+                    if (-not [string]::IsNullOrWhiteSpace($commit)) { return $commit }
+                }
+            }
+            catch {
+            }
+        }
+    }
+
+    return ''
+}
+
 function Get-RemoteSystemToolsMetadata {
     if ([string]::IsNullOrWhiteSpace($script:SystemToolsGitHubRepo)) { return $null }
 
-    foreach ($branch in @('master', 'main')) {
+    $defaultBranch = ''
+    if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+        try {
+            $repoJson = (& gh.exe api "repos/$($script:SystemToolsGitHubRepo)" 2>$null | Out-String).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($repoJson)) {
+                $repoInfo = $repoJson | ConvertFrom-Json
+                $defaultBranch = [string]$repoInfo.default_branch
+            }
+        }
+        catch {
+        }
+    }
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($defaultBranch)) {
+            $repoInfo = Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}" -f $script:SystemToolsGitHubRepo) -Headers (Get-SystemToolsGitHubApiHeaders) -TimeoutSec 5 -ErrorAction Stop
+            $defaultBranch = [string]$repoInfo.default_branch
+        }
+    }
+    catch {
+    }
+
+    $branchCandidates = [System.Collections.Generic.List[string]]::new()
+    foreach ($candidate in @($defaultBranch, 'master', 'main')) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and -not $branchCandidates.Contains($candidate)) {
+            $branchCandidates.Add($candidate)
+        }
+    }
+
+    foreach ($branch in $branchCandidates) {
         if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
             try {
                 $content = (& gh.exe api "repos/$($script:SystemToolsGitHubRepo)/contents/app-metadata.json?ref=$branch" --jq '.content' 2>$null | Out-String).Trim()
@@ -200,6 +466,7 @@ function Get-RemoteSystemToolsMetadata {
                         Metadata = $metadata
                         Repo     = $script:SystemToolsGitHubRepo
                         Branch   = $branch
+                        Commit   = (Resolve-RemoteSystemToolsCommit -Repo $script:SystemToolsGitHubRepo -Ref $branch)
                     }
                 }
             }
@@ -209,16 +476,74 @@ function Get-RemoteSystemToolsMetadata {
 
         $rawUri = "https://raw.githubusercontent.com/$($script:SystemToolsGitHubRepo)/$branch/app-metadata.json"
         try {
-            $metadata = Invoke-RestMethod -Uri $rawUri -Method Get -Headers @{ 'User-Agent' = "$($script:SystemToolsAppName)/$($script:SystemToolsAppVersion)" } -TimeoutSec 8
+            $metadata = Invoke-RestMethod -Uri $rawUri -Method Get -Headers (Get-SystemToolsGitHubApiHeaders) -TimeoutSec 8
             if ($null -ne $metadata) {
                 return [pscustomobject]@{
                     Metadata = $metadata
                     Repo     = $script:SystemToolsGitHubRepo
                     Branch   = $branch
+                    Commit   = (Resolve-RemoteSystemToolsCommit -Repo $script:SystemToolsGitHubRepo -Ref $branch)
                 }
             }
         }
         catch {
+        }
+    }
+
+    $gitRemoteTarget = Get-SystemToolsGitRemoteTarget -Repo $script:SystemToolsGitHubRepo
+    if (-not [string]::IsNullOrWhiteSpace($gitRemoteTarget) -and (Get-Command git.exe -ErrorAction SilentlyContinue)) {
+        foreach ($branch in $branchCandidates) {
+            try {
+                $remoteLine = (& git.exe -C $script:SystemToolsRootPath ls-remote $gitRemoteTarget "refs/heads/$branch" 2>$null | Select-Object -First 1 | Out-String).Trim()
+                if ([string]::IsNullOrWhiteSpace($remoteLine)) { continue }
+                $latestCommit = ($remoteLine -split '\s+')[0]
+                $metadata = $null
+
+                try {
+                    $inside = (& git.exe -C $script:SystemToolsRootPath rev-parse --is-inside-work-tree 2>$null | Out-String).Trim()
+                    if ($inside -eq 'true') {
+                        $metadataJson = (& git.exe -C $script:SystemToolsRootPath show "$($latestCommit):app-metadata.json" 2>$null | Out-String).Trim()
+                        if (-not [string]::IsNullOrWhiteSpace($metadataJson)) {
+                            $metadata = $metadataJson | ConvertFrom-Json
+                        }
+                    }
+                }
+                catch {
+                }
+
+                if ($null -eq $metadata) {
+                    $tempRoot = Join-Path $env:TEMP ("SystemTools_update_metadata_{0}" -f [guid]::NewGuid().ToString('N'))
+                    try {
+                        & git.exe clone --quiet --depth 1 --branch $branch $gitRemoteTarget $tempRoot 2>$null
+                        if ($LASTEXITCODE -eq 0) {
+                            $metadataPath = Join-Path $tempRoot 'app-metadata.json'
+                            if (Test-Path -LiteralPath $metadataPath -PathType Leaf) {
+                                $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+                            }
+                        }
+                    }
+                    catch {
+                    }
+                    finally {
+                        if (Test-Path -LiteralPath $tempRoot) {
+                            Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                }
+
+                if ($null -eq $metadata) {
+                    $metadata = [pscustomobject]@{ version = '' }
+                }
+
+                return [pscustomobject]@{
+                    Metadata = $metadata
+                    Repo     = $script:SystemToolsGitHubRepo
+                    Branch   = $branch
+                    Commit   = $latestCommit
+                }
+            }
+            catch {
+            }
         }
     }
 
@@ -305,7 +630,7 @@ function Resolve-SystemToolsUpdateStatus {
     $staleCachedStatus = Read-SystemToolsUpdateStatusCache -AllowStale
     $remoteInfo = Get-RemoteSystemToolsMetadata
     if ($null -eq $remoteInfo) {
-        if ($null -ne $staleCachedStatus) {
+        if ($null -ne $staleCachedStatus -and [string]$staleCachedStatus.Status -ne 'UpToDate') {
             $staleCachedStatus.Message = 'Using cached update status because the latest version could not be reached.'
             $script:SystemToolsUpdateStatus = $staleCachedStatus
             return $script:SystemToolsUpdateStatus
@@ -321,49 +646,73 @@ function Resolve-SystemToolsUpdateStatus {
     $remoteVersionObject = ConvertTo-SystemToolsVersion -VersionText $latestVersion
     $statusName = 'Unknown'
     $statusMessage = 'Update status is unavailable.'
-    $commitInfo = Get-SystemToolsInstalledCommitInfo
-    $localCommit = [string]$commitInfo.GitHubCommit
-    $remoteCommit = Get-RemoteSystemToolsCommit -Repo ([string]$remoteInfo.Repo) -Ref ([string]$remoteInfo.Branch)
+    $sourceInfo = Get-SystemToolsCurrentSourceInfo
+    $localCommit = [string]$sourceInfo.Commit
+    $latestCommit = [string]$remoteInfo.Commit
+    if ([string]::IsNullOrWhiteSpace($latestCommit)) {
+        $latestCommit = Resolve-RemoteSystemToolsCommit -Repo ([string]$remoteInfo.Repo) -Ref ([string]$remoteInfo.Branch)
+    }
+    $sourceKind = [string]$sourceInfo.SourceKind
+    $hasLocalChanges = [bool]$sourceInfo.HasLocalChanges
 
-    if ($null -ne $localVersionObject -and $null -ne $remoteVersionObject) {
+    if ($sourceKind -eq 'Workspace' -and $hasLocalChanges) {
+        $statusName = 'WorkspaceModified'
+        $statusMessage = "This workspace has unpublished local changes. Local metadata is v$script:SystemToolsAppVersion at HEAD $(Get-SystemToolsShortCommit -Commit $localCommit); latest GitHub $($remoteInfo.Branch) is v$latestVersion at $(Get-SystemToolsShortCommit -Commit $latestCommit)."
+    }
+    elseif ($sourceKind -eq 'Workspace' -and $localCommit -ne $latestCommit -and (Test-SystemToolsLocalGitCommitContainsRemoteCommit -RemoteCommit $latestCommit -LocalCommit $localCommit)) {
+        $statusName = 'LocalAhead'
+        $statusMessage = "This workspace has local commits not yet published to GitHub $($remoteInfo.Branch). Latest published commit is $(Get-SystemToolsShortCommit -Commit $latestCommit); local HEAD is $(Get-SystemToolsShortCommit -Commit $localCommit)."
+    }
+    elseif ($null -ne $localVersionObject -and $null -ne $remoteVersionObject) {
         if ($localVersionObject -lt $remoteVersionObject) {
             $statusName = 'UpdateAvailable'
-            $statusMessage = "Update available: v$latestVersion"
+            $statusMessage = "Update available from GitHub $($remoteInfo.Branch): v$latestVersion."
         }
         elseif ($localVersionObject -gt $remoteVersionObject) {
             $statusName = 'LocalAhead'
-            $statusMessage = "Local version v$script:SystemToolsAppVersion is ahead of origin."
+            $statusMessage = "Local version v$script:SystemToolsAppVersion is newer than the latest GitHub $($remoteInfo.Branch) version v$latestVersion."
+        }
+        elseif (
+            -not [string]::IsNullOrWhiteSpace($localCommit) -and
+            -not [string]::IsNullOrWhiteSpace($latestCommit) -and
+            $localCommit -ne $latestCommit
+        ) {
+            $statusName = 'UpdateAvailable'
+            $statusMessage = "Update available from GitHub $($remoteInfo.Branch): v$latestVersion has commit $(Get-SystemToolsShortCommit -Commit $latestCommit); local is $(Get-SystemToolsShortCommit -Commit $localCommit)."
         }
         else {
             $statusName = 'UpToDate'
-            $statusMessage = "App is up to date at v$latestVersion."
+            $commitLabel = Get-SystemToolsShortCommit -Commit $latestCommit
+            $statusMessage = if ([string]::IsNullOrWhiteSpace($commitLabel)) { "App is up to date with GitHub $($remoteInfo.Branch) at v$latestVersion." } else { "App is up to date with GitHub $($remoteInfo.Branch) at v$latestVersion ($commitLabel)." }
         }
     }
     elseif (-not [string]::IsNullOrWhiteSpace($latestVersion) -and $latestVersion -eq $script:SystemToolsAppVersion) {
-        $statusName = 'UpToDate'
-        $statusMessage = "App is up to date at v$latestVersion."
-    }
-
-    if ($statusName -in @('UpToDate', 'Unknown') -and
-        -not [string]::IsNullOrWhiteSpace($localCommit) -and
-        -not [string]::IsNullOrWhiteSpace($remoteCommit) -and
-        $localCommit -ne $remoteCommit) {
-        $statusName = 'UpdateAvailable'
-        $statusMessage = "Update available: remote $($remoteInfo.Branch) has newer code."
-    }
-    elseif ($statusName -eq 'UpToDate' -and -not [string]::IsNullOrWhiteSpace($localCommit)) {
-        $statusMessage = "App is up to date at v$latestVersion (commit $($localCommit.Substring(0, [Math]::Min(7, $localCommit.Length))))."
+        if (
+            -not [string]::IsNullOrWhiteSpace($localCommit) -and
+            -not [string]::IsNullOrWhiteSpace($latestCommit) -and
+            $localCommit -ne $latestCommit
+        ) {
+            $statusName = 'UpdateAvailable'
+            $statusMessage = "Update available from GitHub $($remoteInfo.Branch): v$latestVersion has commit $(Get-SystemToolsShortCommit -Commit $latestCommit); local is $(Get-SystemToolsShortCommit -Commit $localCommit)."
+        }
+        else {
+            $statusName = 'UpToDate'
+            $commitLabel = Get-SystemToolsShortCommit -Commit $latestCommit
+            $statusMessage = if ([string]::IsNullOrWhiteSpace($commitLabel)) { "App is up to date with GitHub $($remoteInfo.Branch) at v$latestVersion." } else { "App is up to date with GitHub $($remoteInfo.Branch) at v$latestVersion ($commitLabel)." }
+        }
     }
 
     $script:SystemToolsUpdateStatus = New-SystemToolsUpdateStatus `
         -LocalVersion $script:SystemToolsAppVersion `
         -LatestVersion $latestVersion `
+        -LocalCommit $localCommit `
+        -LatestCommit $latestCommit `
+        -SourceKind $sourceKind `
+        -HasLocalChanges $hasLocalChanges `
         -Repo ([string]$remoteInfo.Repo) `
         -Branch ([string]$remoteInfo.Branch) `
         -Status $statusName `
         -Message $statusMessage `
-        -LocalCommit $localCommit `
-        -RemoteCommit $remoteCommit `
         -CheckedAt ((Get-Date).ToString('s'))
 
     Write-SystemToolsUpdateStatusCache -Status $script:SystemToolsUpdateStatus
@@ -390,6 +739,10 @@ function Get-SystemToolsUpdateStatusPresentation {
             $label = 'Local version ahead'
             $color = $_C.Info
         }
+        'WorkspaceModified' {
+            $label = 'Workspace has local changes'
+            $color = $_C.Info
+        }
         'Error' {
             $label = 'Update check failed'
             $color = $_C.Fail
@@ -406,7 +759,11 @@ function Get-SystemToolsUpdateStatusPresentation {
         Message       = [string]$script:SystemToolsUpdateStatus.Message
         CheckedAt     = [string]$script:SystemToolsUpdateStatus.CheckedAt
         LocalCommit   = [string]$script:SystemToolsUpdateStatus.LocalCommit
-        RemoteCommit  = [string]$script:SystemToolsUpdateStatus.RemoteCommit
+        LatestCommit  = [string]$script:SystemToolsUpdateStatus.LatestCommit
+        RemoteCommit  = [string]$script:SystemToolsUpdateStatus.LatestCommit
+        SourceKind    = [string]$script:SystemToolsUpdateStatus.SourceKind
+        HasLocalChanges = [bool]$script:SystemToolsUpdateStatus.HasLocalChanges
+        Status        = [string]$script:SystemToolsUpdateStatus.Status
     }
 }
 
@@ -1027,6 +1384,10 @@ function Invoke-MenuPathToggle {
 }
 
 function Get-SystemToolsInstallerAction {
+    if (Test-Path -LiteralPath (Join-Path $script:SystemToolsRootPath '.git') -PathType Container) {
+        return 'GitFastForward'
+    }
+
     $installMetaPath = Join-Path $script:SystemToolsRootPath 'state\install-meta.json'
     if (Test-Path -LiteralPath $installMetaPath -PathType Leaf) {
         try {
@@ -1053,6 +1414,91 @@ function Get-SystemToolsInstallerAction {
     return 'DownloadLatest'
 }
 
+function Get-SystemToolsGitBranch {
+    try {
+        $branch = (& git.exe -C $script:SystemToolsRootPath branch --show-current 2>$null | Out-String).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($branch)) { return $branch }
+    }
+    catch {
+    }
+
+    try {
+        $branch = (& git.exe -C $script:SystemToolsRootPath rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+        if ($branch -ne 'HEAD') { return $branch }
+    }
+    catch {
+    }
+
+    return ''
+}
+
+function Invoke-SystemToolsGitFastForwardUpdate {
+    $recentLines = [System.Collections.Generic.List[string]]::new()
+    function Add-RecentLine {
+        param([AllowEmptyString()][string]$Line)
+        if ([string]::IsNullOrWhiteSpace($Line)) { return }
+        [void]$recentLines.Add($Line)
+        while ($recentLines.Count -gt 12) {
+            $recentLines.RemoveAt(0)
+        }
+    }
+
+    if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
+        Add-RecentLine 'git.exe was not found in PATH.'
+        return [pscustomobject]@{ Success = $false; Message = 'Git update failed: git.exe was not found.'; Lines = @($recentLines); ExitCode = 9001 }
+    }
+
+    try {
+        $inside = (& git.exe -C $script:SystemToolsRootPath rev-parse --is-inside-work-tree 2>&1 | Out-String).Trim()
+        if ($inside -ne 'true') {
+            Add-RecentLine 'This folder is not a git working copy.'
+            return [pscustomobject]@{ Success = $false; Message = 'Git update failed: this folder is not a git working copy.'; Lines = @($recentLines); ExitCode = 9002 }
+        }
+
+        $dirty = (& git.exe -C $script:SystemToolsRootPath status --porcelain 2>&1 | Out-String).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($dirty)) {
+            Add-RecentLine 'Working copy has local changes. Fast-forward update refused.'
+            Add-RecentLine 'Commit, stash, or discard local changes before updating this repo copy.'
+            return [pscustomobject]@{ Success = $false; Message = 'Git update refused because the workspace is dirty.'; Lines = @($recentLines); ExitCode = 3 }
+        }
+
+        $branch = Get-SystemToolsGitBranch
+        if ([string]::IsNullOrWhiteSpace($branch)) {
+            Add-RecentLine 'Could not determine the current git branch.'
+            return [pscustomobject]@{ Success = $false; Message = 'Git update failed: current branch is unknown.'; Lines = @($recentLines); ExitCode = 9003 }
+        }
+
+        Add-RecentLine ("Fetching origin/{0}..." -f $branch)
+        $fetchText = (& git.exe -C $script:SystemToolsRootPath fetch --prune origin $branch 2>&1 | Out-String).Trim()
+        foreach ($line in ($fetchText -split "`r?`n")) { Add-RecentLine $line }
+        if ($LASTEXITCODE -ne 0) {
+            return [pscustomobject]@{ Success = $false; Message = "Git fetch failed with exit code $LASTEXITCODE."; Lines = @($recentLines); ExitCode = $LASTEXITCODE }
+        }
+
+        $localHead = (& git.exe -C $script:SystemToolsRootPath rev-parse HEAD 2>&1 | Out-String).Trim()
+        $remoteHead = (& git.exe -C $script:SystemToolsRootPath rev-parse "origin/$branch" 2>&1 | Out-String).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($localHead) -and $localHead -eq $remoteHead) {
+            Add-RecentLine ("Already up to date with origin/{0}." -f $branch)
+            return [pscustomobject]@{ Success = $true; Message = 'Git working copy is already up to date.'; Lines = @($recentLines); ExitCode = 0 }
+        }
+
+        Add-RecentLine ("Fast-forwarding to origin/{0}..." -f $branch)
+        $mergeText = (& git.exe -C $script:SystemToolsRootPath merge --ff-only "origin/$branch" 2>&1 | Out-String).Trim()
+        foreach ($line in ($mergeText -split "`r?`n")) { Add-RecentLine $line }
+        $exitCode = $LASTEXITCODE
+        return [pscustomobject]@{
+            Success = ($exitCode -eq 0)
+            Message = if ($exitCode -eq 0) { 'Git working copy updated with fast-forward.' } else { "Git fast-forward failed with exit code $exitCode." }
+            Lines   = @($recentLines)
+            ExitCode = $exitCode
+        }
+    }
+    catch {
+        Add-RecentLine ("Git update failed: {0}" -f $_.Exception.Message)
+        return [pscustomobject]@{ Success = $false; Message = 'Git update failed.'; Lines = @($recentLines); ExitCode = 9999 }
+    }
+}
+
 function Invoke-SystemToolsInPlaceUpdate {
     $installerPath = Join-Path $script:SystemToolsRootPath 'Install.ps1'
     if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
@@ -1064,6 +1510,15 @@ function Invoke-SystemToolsInPlaceUpdate {
     }
 
     $action = Get-SystemToolsInstallerAction
+    if ($action -eq 'GitFastForward') {
+        Clear-Host
+        Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'Updating app'
+        Write-Host "  $($_C.H2)Action:$($_C.Reset) $($_C.White)git fetch + fast-forward$($_C.Reset)"
+        Write-Host "  $($_C.H2)Status:$($_C.Reset) $($_C.Info)Checking workspace...$($_C.Reset)"
+        Write-Host ''
+        return Invoke-SystemToolsGitFastForwardUpdate
+    }
+
     $pwshCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
     if ($null -eq $pwshCommand -or -not (Test-Path -LiteralPath $pwshCommand.Source -PathType Leaf)) {
         return [pscustomobject]@{
@@ -1164,19 +1619,30 @@ function Show-SystemToolsUpdateMenu {
     while ($true) {
         $status = Get-SystemToolsUpdateStatusPresentation
         $action = Get-SystemToolsInstallerAction
-        $targetLabel = if ($action -eq 'DownloadLatest') { 'Workspace working copy' } else { 'Installed app copy' }
-        $methodLabel = if ($action -eq 'DownloadLatest') { 'Download latest into this folder' } else { 'Installer/GitHub in-place update' }
+        $targetLabel = switch ($action) {
+            'GitFastForward' { 'Git repo working copy' }
+            'DownloadLatest' { 'Portable working copy' }
+            default { 'Installed app copy' }
+        }
+        $methodLabel = switch ($action) {
+            'GitFastForward' { 'Git fetch + fast-forward only' }
+            'DownloadLatest' { 'Download latest into this folder' }
+            default { 'Installer/GitHub in-place update' }
+        }
         $latestLabel = if ([string]::IsNullOrWhiteSpace($status.LatestVersion)) { '--' } else { $status.LatestVersion }
         $branchLabel = if ([string]::IsNullOrWhiteSpace($status.Branch)) { '--' } else { $status.Branch }
         $checkedAtLabel = if ([string]::IsNullOrWhiteSpace($status.CheckedAt)) { '--' } else { $status.CheckedAt.Replace('T', ' ') }
         $localCommitLabel = if ([string]::IsNullOrWhiteSpace($status.LocalCommit)) { '--' } else { $status.LocalCommit.Substring(0, [Math]::Min(7, $status.LocalCommit.Length)) }
-        $remoteCommitLabel = if ([string]::IsNullOrWhiteSpace($status.RemoteCommit)) { '--' } else { $status.RemoteCommit.Substring(0, [Math]::Min(7, $status.RemoteCommit.Length)) }
+        $remoteCommitLabel = if ([string]::IsNullOrWhiteSpace($status.LatestCommit)) { '--' } else { $status.LatestCommit.Substring(0, [Math]::Min(7, $status.LatestCommit.Length)) }
+        $sourceLabel = if ($status.HasLocalChanges) { "$($status.SourceKind) + local changes" } else { $status.SourceKind }
 
         $headerBlock = {
             Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'PATH Manager'
             Write-Host "  $($_C.H2)Current version:$($_C.Reset) $($_C.Info)$script:SystemToolsAppVersion$($_C.Reset)"
             Write-Host "  $($_C.H2)Latest version :$($_C.Reset) $($_C.Info)$latestLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Update        :$($_C.Reset) $($status.Color)$($status.Label)$($_C.Reset)"
+            Write-Host "  $($_C.H2)Status        :$($_C.Reset) $($_C.Info)$($status.Status)$($_C.Reset)"
+            Write-Host "  $($_C.H2)Source        :$($_C.Reset) $($_C.Info)$sourceLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Repo / branch :$($_C.Reset) $($_C.Info)$($status.Repo)$($_C.Reset) $($_C.Dim)|$($_C.Reset) $($_C.Info)$branchLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Commits       :$($_C.Reset) $($_C.Info)$localCommitLabel$($_C.Reset) $($_C.Dim)->$($_C.Reset) $($_C.Info)$remoteCommitLabel$($_C.Reset)"
             Write-Host "  $($_C.H2)Target        :$($_C.Reset) $($_C.Info)$targetLabel$($_C.Reset)"
@@ -1243,10 +1709,16 @@ function Show-Menu {
             $userBadge = if ($status.InUser) { 'YES' } else { 'NO' }
             $machineBadge = if ($status.InMachine) { 'YES' } else { 'NO' }
             $updateStatus = Get-SystemToolsUpdateStatusPresentation
+            $sourceLabel = if ($updateStatus.HasLocalChanges) { "$($updateStatus.SourceKind) + local changes" } else { $updateStatus.SourceKind }
+            $localCommitLabel = if ([string]::IsNullOrWhiteSpace($updateStatus.LocalCommit)) { '--' } else { $updateStatus.LocalCommit.Substring(0, [Math]::Min(7, $updateStatus.LocalCommit.Length)) }
+            $latestCommitLabel = if ([string]::IsNullOrWhiteSpace($updateStatus.LatestCommit)) { '--' } else { $updateStatus.LatestCommit.Substring(0, [Math]::Min(7, $updateStatus.LatestCommit.Length)) }
 
             $headerBlock = {
                 Write-UiBanner -Title "$script:SystemToolsAppName v$script:SystemToolsAppVersion" -Subtitle 'Resize-safe PATH and environment control'
                 Write-Host "  $($_C.H2)Update        : $($updateStatus.Color)$($updateStatus.Label)$($_C.Reset)"
+                Write-Host "  $($_C.H2)Version       : $($_C.Info)$($updateStatus.LocalVersion)$($_C.Reset) $($_C.Dim)->$($_C.Reset) $($_C.Info)$(if ([string]::IsNullOrWhiteSpace($updateStatus.LatestVersion)) { '--' } else { $updateStatus.LatestVersion })$($_C.Reset)"
+                Write-Host "  $($_C.H2)Commits       : $($_C.Info)$localCommitLabel$($_C.Reset) $($_C.Dim)->$($_C.Reset) $($_C.Info)$latestCommitLabel$($_C.Reset)"
+                Write-Host "  $($_C.H2)Source        : $($_C.Info)$sourceLabel$($_C.Reset)"
                 Write-Host "  $($_C.H2)Target Folder : $($_C.Info)$PathToUse$($_C.Reset)"
                 Write-Host "  $($_C.H2)Session Mode  : $($_C.Info)$sessionMode$($_C.Reset)"
                 Write-Host "  $($_C.H2)User PATH     : $(if ($status.InUser) { $_C.OK } else { $_C.Fail })$userBadge$($_C.Reset)"

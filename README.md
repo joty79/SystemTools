@@ -110,7 +110,7 @@ Provides an interactive console UI block that allows you to safely:
 | 🔁 **Toggle Machine PATH** | Auto-elevates to Admin via UAC |
 | 🌿 **ENV Snapshot** | Live split-pane view of all environment variables in Windows Terminal |
 | 💾 **Export** | Save full environment snapshot as Markdown documentation |
-| ⬆️ **Update App** | Shows local/remote version and commit status, then runs the generated InstallerCore updater |
+| ⬆️ **Update App** | Shows version, commit, source, and dirty-state status, then runs the safest InstallerCore-backed update path |
 | 📡 **Broadcast** | Sends `WM_SETTINGCHANGE` so all apps pick up PATH changes instantly |
 
 ### Usage
@@ -126,7 +126,9 @@ Opens a resize-safe arrow menu in Windows Terminal:
 ╚════════════════════════════════════════════════════════╝
 
   Update        : Up to date
+  Version       : 1.0.3 -> 1.0.3
   Commits       : 8ce4f90 -> 8ce4f90
+  Source        : Workspace
   Target Folder : D:\Users\joty79\scripts\SystemTools
   Session Mode  : Admin
   User PATH     : YES
@@ -139,6 +141,16 @@ Opens a resize-safe arrow menu in Windows Terminal:
     Update app
     Exit
 ```
+
+The `Update app` panel is commit-aware, not just version-aware:
+
+| Source kind | Update method |
+|-------------|---------------|
+| Git repo working copy | `git fetch` plus `merge --ff-only`; dirty workspaces are refused |
+| Installed copy | `Install.ps1 -Action UpdateGitHub`, comparing `state\install-meta.json` `github_commit` to the latest remote commit |
+| Portable non-git copy | `Install.ps1 -Action DownloadLatest -NoSelfRelaunch` |
+
+If a fresh remote check fails, a stale cached `Up to date` result is not reused.
 
 **Direct CLI actions:**
 

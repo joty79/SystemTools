@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.3**: Bumped `app-metadata.json` for the commit-aware `Update app` status migration.
+- **PATH Manager Update Status**: Expanded update checks to show local/latest version, local/latest commit, source kind, dirty state, and status, while preventing stale cached `UpToDate` results from hiding failed fresh remote checks.
+- **PATH Manager Update Flow**: Git repo working copies now update only through `git fetch` plus fast-forward and refuse dirty workspaces; installed copies compare `state\install-meta.json` `github_commit` against the latest remote commit; portable non-git copies continue to use `DownloadLatest -NoSelfRelaunch`.
 - **Version 1.0.2**: Bumped `app-metadata.json` for the shipped Clear Icon Cache context-menu tool.
 - **Version 1.0.1**: Bumped `app-metadata.json` so installed copies can detect the current PATH Manager update through the existing version-based update UI.
 - **PATH Manager Update UI**: Added the InstallerCore-style `Update: ...` header status and `Update app` submenu inside the PATH Manager TUI.
