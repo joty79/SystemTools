@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.5**: Flattened the visible `System Tools` menu back to direct ordered entries after nested category submenus showed awkward native Windows borders.
 - **Version 1.0.4**: Bumped `app-metadata.json` for the shared `Explorer` / `Apps & Windows` context-menu layout migration.
 - **Context Menu Layout**: Moved built-in actions into `Explorer` (`Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`) and `Apps & Windows` (`Manage Folder PATH...`). Companion tools now target matching nested child paths from their `InstallerCore` profiles.
 - **Version 1.0.3**: Bumped `app-metadata.json` for the commit-aware `Update app` status migration.

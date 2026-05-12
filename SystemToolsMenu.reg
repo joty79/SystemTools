@@ -18,53 +18,39 @@ Windows Registry Editor Version 5.00
 "SubCommands"=""
 "Icon"="imageres.dll,-109"
 
-[HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools\shell\Explorer]
-"MUIVerb"="Explorer"
-"SubCommands"=""
-"Icon"="imageres.dll,-102"
-
 ; Parent menu (folders)
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
 "MUIVerb"="System Tools"
 "SubCommands"=""
 "Icon"="imageres.dll,-109"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer]
-"MUIVerb"="Explorer"
-"SubCommands"=""
-"Icon"="imageres.dll,-102"
-
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\RefreshShell]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\01RefreshShell]
 "MUIVerb"="Refresh Shell"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\RefreshShell\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\01RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\RestartExplorer]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\02RestartExplorer]
 "MUIVerb"="Restart Explorer"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\RestartExplorer\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\02RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%1\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ClearIconCache]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\03ClearIconCache]
 "MUIVerb"="Clear Icon Cache"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\03ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows]
-"MUIVerb"="Apps && Windows"
-"SubCommands"=""
-"Icon"="imageres.dll,-5323"
-
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows\shell\PathManager]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\20PathManager]
 "MUIVerb"="Manage Folder PATH..."
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\folder_to_path.ico"
+"CommandFlags"=dword:00000020
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows\shell\PathManager\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\20PathManager\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%1\""
 
 ; Parent menu (folder background)
@@ -73,42 +59,33 @@ Windows Registry Editor Version 5.00
 "SubCommands"=""
 "Icon"="imageres.dll,-109"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer]
-"MUIVerb"="Explorer"
-"SubCommands"=""
-"Icon"="imageres.dll,-102"
-
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\RefreshShell]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\01RefreshShell]
 "MUIVerb"="Refresh Shell"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\RefreshShell\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\01RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\RestartExplorer]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\02RestartExplorer]
 "MUIVerb"="Restart Explorer"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\RestartExplorer\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\02RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%V\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\ClearIconCache]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\03ClearIconCache]
 "MUIVerb"="Clear Icon Cache"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\03ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows]
-"MUIVerb"="Apps && Windows"
-"SubCommands"=""
-"Icon"="imageres.dll,-5323"
-
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows\shell\PathManager]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\20PathManager]
 "MUIVerb"="Manage Folder PATH..."
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\folder_to_path.ico"
+"CommandFlags"=dword:00000020
 
-[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows\shell\PathManager\command]
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\20PathManager\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsMenu.vbs\" \"%V\""
 
 ; Parent menu (desktop background)
@@ -118,44 +95,29 @@ Windows Registry Editor Version 5.00
 "Icon"="imageres.dll,-109"
 "Position"="Bottom"
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer]
-"MUIVerb"="Explorer"
-"SubCommands"=""
-"Icon"="imageres.dll,-102"
-
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\RefreshShell]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\01RefreshShell]
 "MUIVerb"="Refresh Shell"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\refresh_shell.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\RefreshShell\command]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\01RefreshShell\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RefreshShell.vbs\""
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\RestartExplorer]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\02RestartExplorer]
 "MUIVerb"="Restart Explorer"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\restart_explorer.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\RestartExplorer\command]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\02RestartExplorer\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-RestartExplorer.vbs\" \"%V\""
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\ClearIconCache]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\03ClearIconCache]
 "MUIVerb"="Clear Icon Cache"
 "Icon"="D:\\Users\\joty79\\scripts\\SystemTools\\.assets\\icons\\Clear-IconCache.ico"
 
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\03ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
-
-[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\AppsWindows]
-"MUIVerb"="Apps && Windows"
-"SubCommands"=""
-"Icon"="imageres.dll,-5323"
 
 ; Parent menu (EXE files, used by Firewall Rules)
 [HKEY_CURRENT_USER\Software\Classes\exefile\shell\SystemTools]
 "MUIVerb"="System Tools"
 "SubCommands"=""
 "Icon"="imageres.dll,-109"
-
-[HKEY_CURRENT_USER\Software\Classes\exefile\shell\SystemTools\shell\AppsWindows]
-"MUIVerb"="Apps && Windows"
-"SubCommands"=""
-"Icon"="imageres.dll,-5323"
