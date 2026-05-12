@@ -6,12 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Structured System Tools Menu**: Added `Explorer` and `Apps & Windows` category folders under the shared `System Tools` context-menu parent so separately maintained tools can appear as one organized toolbox.
 - **Clear Icon Cache** (`Clear-IconCache.ps1`): Comprehensive icon, thumbnail, and UWP AppIconCache rebuild script with `System Tools` context-menu integration on folder, folder background, and desktop background branches. Kills all shell processes (Explorer, SearchHost, ShellExperienceHost, StartMenuExperienceHost, TextInputHost) to release file locks, deletes all cache databases, uses `ie4uinit -show` for icon refresh, and schedules locked files for boot-time deletion via RunOnce. More thorough than BleachBit's thumbnail cleaner (which misses icon cache, AppIconCache, and locked file handling).
 - **PSRemoting Manager** (`Toggle-PSRemoting.ps1`): Interactive UI to safely Enable/Disable WinRM, and manage `TrustedHosts` (Add or Clear).
 - **Remote Environment Export**: `Export-EnvReadable.ps1` now supports fetching environment variables from a remote computer via PSRemoting/WinRM.
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.4**: Bumped `app-metadata.json` for the shared `Explorer` / `Apps & Windows` context-menu layout migration.
+- **Context Menu Layout**: Moved built-in actions into `Explorer` (`Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`) and `Apps & Windows` (`Manage Folder PATH...`). Companion tools now target matching nested child paths from their `InstallerCore` profiles.
 - **Version 1.0.3**: Bumped `app-metadata.json` for the commit-aware `Update app` status migration.
 - **PATH Manager Update Status**: Expanded update checks to show local/latest version, local/latest commit, source kind, dirty state, and status, while preventing stale cached `UpToDate` results from hiding failed fresh remote checks.
 - **PATH Manager Update Flow**: Git repo working copies now update only through `git fetch` plus fast-forward and refuse dirty workspaces; installed copies compare `state\install-meta.json` `github_commit` against the latest remote commit; portable non-git copies continue to use `DownloadLatest -NoSelfRelaunch`.
