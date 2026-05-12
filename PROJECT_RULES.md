@@ -440,3 +440,12 @@
 - Guardrail/rule: Keep `SystemTools` as the only owner of the shared parent and category folders. Built-in host tools live under `Explorer` or `Apps & Windows`; child repos install only their nested child verbs under those category folders. Keep old flat child paths in cleanup lists until installed machines have migrated.
 - Files affected: `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, and companion child profiles.
 - Validation/tests run: Profile JSON parse validation passed; generated installers parser-validated; local-source updates completed for `SystemTools`, `TakeOwnership`, `WhoIsUsingThis`, `WinAppManager`, `SystemCleanup`, and `Firewall`; HKCU registry readback confirmed new category keys and representative child commands; old flat HKCU child keys confirmed removed; `RefreshShell.ps1 -NoPause` completed.
+
+### Entry - 2026-05-12 (Ask before changing visible layout model)
+
+- Date: 2026-05-12
+- Problem: The visible menu was temporarily flattened without first confirming the layout change, even though the user wanted to keep evaluating the two-category submenu despite border artifacts.
+- Root cause: I treated a visual concern as permission to choose a different information architecture.
+- Guardrail/rule: For visible context-menu layout changes, distinguish bug fixes from structure changes. Do not switch between nested categories and flat ordered children without explicit user confirmation.
+- Files affected: `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Pending reinstall/readback after restoring category layout.
