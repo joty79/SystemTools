@@ -52,7 +52,9 @@ $script:ProfileJson = @'
     ".assets\\icons\\folder_to_path.ico",
     ".assets\\icons\\restart_explorer.ico",
     ".assets\\icons\\refresh_shell.ico",
-    ".assets\\icons\\Clear-IconCache.ico"
+    ".assets\\icons\\Clear-IconCache.ico",
+    "SystemToolsManager.ps1",
+    "Launch-SystemToolsManager.vbs"
   ],
   "deploy_entries": [
     "app-metadata.json",
@@ -68,7 +70,9 @@ $script:ProfileJson = @'
     "Launch-RestartExplorer.vbs",
     "Launch-RefreshShell.vbs",
     "Launch-ClearIconCache.vbs",
-    ".assets"
+    ".assets",
+    "SystemToolsManager.ps1",
+    "Launch-SystemToolsManager.vbs"
   ],
   "preserve_existing_entries": [],
   "verify_core_files": [
@@ -88,7 +92,9 @@ $script:ProfileJson = @'
     ".assets\\icons\\folder_to_path.ico",
     ".assets\\icons\\restart_explorer.ico",
     ".assets\\icons\\refresh_shell.ico",
-    ".assets\\icons\\Clear-IconCache.ico"
+    ".assets\\icons\\Clear-IconCache.ico",
+    "SystemToolsManager.ps1",
+    "Launch-SystemToolsManager.vbs"
   ],
   "migration_copy_entries": [
     "logs",
@@ -547,6 +553,78 @@ $script:ProfileJson = @'
       "name": "Icon",
       "type": "REG_SZ",
       "value": "imageres.dll,-5323"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Tool Manager / Updates"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-109"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsManager.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Tool Manager / Updates"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-109"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsManager.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Tool Manager / Updates"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-109"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsManager.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Tool Manager / Updates"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-109"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsManager.vbs\""
     }
   ],
   "registry_verify": [
@@ -634,6 +712,11 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\AppsWindows",
       "name": "MUIVerb",
       "expected": "Apps && Windows"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsManager.vbs\""
     }
   ],
   "wrapper_patches": [
@@ -656,6 +739,11 @@ $script:ProfileJson = @'
       "file": "Launch-ClearIconCache.vbs",
       "regex": "scriptPath\\s*=\\s*\"[^\"]+\"",
       "replacement": "scriptPath = \"{InstallRoot}\\Clear-IconCache.ps1\""
+    },
+    {
+      "file": "Launch-SystemToolsManager.vbs",
+      "regex": "scriptPath\\s*=\\s*\"[^\"]+\"",
+      "replacement": "scriptPath = \"{InstallRoot}\\SystemToolsManager.ps1\""
     }
   ]
 }

@@ -18,6 +18,7 @@
 | # | Tool | Description |
 |:-:|------|-------------|
 | 🔁 | **[Restart Explorer](#-restart-explorer)** | Kill & cleanly restart `explorer.exe` — reopens target folder without zombie processes |
+| 🧭 | **[Tool Manager / Updates](#-tool-manager--updates)** | One menu for checking and updating the SystemTools family |
 | 🛡️ | **[PSRemoting Manager](#️-psremoting-manager)** | Interactive UI to safely manage WinRM and TrustedHosts |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
@@ -35,6 +36,7 @@ System Tools
 │   ├── Refresh Shell
 │   ├── Restart Explorer
 │   ├── Clear Icon Cache
+│   ├── Tool Manager / Updates
 │   ├── Take Ownership
 │   └── Who is using this?
 └── Apps & Windows
@@ -45,6 +47,26 @@ System Tools
 ```
 
 Planned additions such as `Make Symlink / Junction` can be added later under `Apps & Windows` without merging every tool into one giant repo.
+
+---
+
+## 🧭 Tool Manager / Updates
+
+> Check and update the small tools that live under the shared `System Tools` menu.
+
+### Usage
+
+**From context menu** — right-click any file, folder, folder background, or desktop background → *System Tools* → *Explorer* → *Tool Manager / Updates*
+
+**From terminal:**
+
+```powershell
+.\SystemToolsManager.ps1
+.\SystemToolsManager.ps1 -Action Status
+.\SystemToolsManager.ps1 -Action UpdateAll
+```
+
+The manager reads each installed tool's `state\install-meta.json`, compares its installed commit with GitHub `master`, and runs the generated `Install.ps1 -Action UpdateGitHub` path for selected tools.
 
 ---
 
@@ -361,6 +383,7 @@ SystemTools/
 ├── app-metadata.json             # App version and GitHub metadata for update checks
 ├── Install.ps1                   # Primary template-based installer
 ├── AddDelPath.ps1                # PATH Manager — interactive menu + CLI
+├── SystemToolsManager.ps1        # Tool Manager / Updates — family updater
 ├── Export-EnvReadable.ps1        # Remote-capable ENV snapshot builder
 ├── Toggle-PSRemoting.ps1         # PSRemoting Manager — interactive WinRM UI
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
@@ -369,6 +392,7 @@ SystemTools/
 ├── Install-SystemToolsMenu.ps1   # Registry installer/uninstaller
 ├── SystemToolsMenu.reg           # Manual registry import (alternative)
 ├── Launch-SystemToolsMenu.vbs    # VBS launcher (no console flash)
+├── Launch-SystemToolsManager.vbs # VBS launcher for Tool Manager / Updates
 ├── Launch-RestartExplorer.vbs    # VBS launcher (no console flash)
 ├── Launch-RefreshShell.vbs       # VBS launcher (no console flash)
 ├── Launch-ClearIconCache.vbs     # Elevated WT launcher for Clear Icon Cache

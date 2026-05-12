@@ -449,3 +449,12 @@
 - Guardrail/rule: For visible context-menu layout changes, distinguish bug fixes from structure changes. Do not switch between nested categories and flat ordered children without explicit user confirmation.
 - Files affected: `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
 - Validation/tests run: Pending reinstall/readback after restoring category layout.
+
+### Entry - 2026-05-12 (Tool Manager under Explorer submenu)
+
+- Date: 2026-05-12
+- Problem: The toolbox needs a non-coder-friendly way to check/update the growing set of separate context-menu repos without hunting through each repo.
+- Root cause: Keeping tools separate improves maintenance, but update visibility was spread across individual apps/installers.
+- Guardrail/rule: Keep `Tool Manager / Updates` as a direct child of the first `System Tools > Explorer` submenu. It may orchestrate generated installers, but must not replace the individual tool repos or change the visible menu layout without confirmation.
+- Files affected: `SystemToolsManager.ps1`, `Launch-SystemToolsManager.vbs`, `SystemToolsMenu.reg`, `Install-SystemToolsMenu.ps1`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`, `Install-SystemToolsMenu.ps1`, and generated `Install.ps1`; `InstallerCore` profile JSON parsed; `scripts\Sync-InstallerCore.ps1 -VerifyOnly` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; HKCU registry readback confirmed `Tool Manager / Updates` under file, folder, folder-background, and desktop `Explorer` branches; installed manager `-Action Status -NoPause` completed.

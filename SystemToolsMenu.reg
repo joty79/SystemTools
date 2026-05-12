@@ -23,6 +23,13 @@ Windows Registry Editor Version 5.00
 "SubCommands"=""
 "Icon"="imageres.dll,-102"
 
+[HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools\shell\Explorer\shell\ToolManager]
+"MUIVerb"="Tool Manager / Updates"
+"Icon"="imageres.dll,-109"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\SystemTools\shell\Explorer\shell\ToolManager\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsManager.vbs\""
+
 ; Parent menu (folders)
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools]
 "MUIVerb"="System Tools"
@@ -54,6 +61,13 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ToolManager]
+"MUIVerb"="Tool Manager / Updates"
+"Icon"="imageres.dll,-109"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ToolManager\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsManager.vbs\""
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows]
 "MUIVerb"="Apps && Windows"
@@ -99,6 +113,13 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
 
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\ToolManager]
+"MUIVerb"="Tool Manager / Updates"
+"Icon"="imageres.dll,-109"
+
+[HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\Explorer\shell\ToolManager\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsManager.vbs\""
+
 [HKEY_CURRENT_USER\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows]
 "MUIVerb"="Apps && Windows"
 "SubCommands"=""
@@ -143,6 +164,13 @@ Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\ClearIconCache\command]
 @="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-ClearIconCache.vbs\""
+
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\ToolManager]
+"MUIVerb"="Tool Manager / Updates"
+"Icon"="imageres.dll,-109"
+
+[HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\Explorer\shell\ToolManager\command]
+@="wscript.exe \"D:\\Users\\joty79\\scripts\\SystemTools\\Launch-SystemToolsManager.vbs\""
 
 [HKEY_CURRENT_USER\Software\Classes\DesktopBackground\Shell\SystemTools\shell\AppsWindows]
 "MUIVerb"="Apps && Windows"

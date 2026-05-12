@@ -33,10 +33,12 @@ $requiredFiles = @(
     'RestartExplorer.ps1',
     'RefreshShell.ps1',
     'Clear-IconCache.ps1',
+    'SystemToolsManager.ps1',
     'Launch-SystemToolsMenu.vbs',
     'Launch-RestartExplorer.vbs',
     'Launch-RefreshShell.vbs',
-    'Launch-ClearIconCache.vbs'
+    'Launch-ClearIconCache.vbs',
+    'Launch-SystemToolsManager.vbs'
 )
 
 foreach ($file in $requiredFiles) {
@@ -102,6 +104,7 @@ function Add-ExplorerTools([string]$BaseKey, [string]$TargetToken) {
     Add-ToolMenu -ToolKey "$explorerKey\RefreshShell" -Label 'Refresh Shell' -Icon "$iconsDir\refresh_shell.ico" -Command "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
     Add-ToolMenu -ToolKey "$explorerKey\RestartExplorer" -Label 'Restart Explorer' -Icon "$iconsDir\restart_explorer.ico" -Command "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"$TargetToken`""
     Add-ToolMenu -ToolKey "$explorerKey\ClearIconCache" -Label 'Clear Icon Cache' -Icon "$iconsDir\Clear-IconCache.ico" -Command "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
+    Add-ToolMenu -ToolKey "$explorerKey\ToolManager" -Label 'Tool Manager / Updates' -Icon 'imageres.dll,-109' -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsManager.vbs`""
 }
 
 function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
