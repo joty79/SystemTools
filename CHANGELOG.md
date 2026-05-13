@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.9**: Bumped `app-metadata.json` for the `Windows Utilities` category rename and top-level Tool Manager placement.
+- **Context Menu Layout**: Renamed `Explorer` category to `Windows Utilities` and moved `Tool Manager / Updates` to the first level under `System Tools`.
 - **Version 1.0.8**: Bumped `app-metadata.json` for the install/repair capable Tool Manager and parent-preserving host installer profile.
 - **Version 1.0.7**: Bumped `app-metadata.json` for the new Tool Manager / Updates context-menu entry.
 - **Version 1.0.6**: Restored the two-category `Explorer` / `Apps & Windows` submenu layout by request after temporarily flattening it.

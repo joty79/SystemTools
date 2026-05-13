@@ -467,3 +467,12 @@
 - Guardrail/rule: `SystemTools` host installers must preserve shared parent trees and clean only host-owned legacy child keys. `SystemToolsManager.ps1` reads `.assets\systemtools-family.json`, supports install/repair/update/verify for all family tools, and must not change the visible two-category layout without explicit confirmation.
 - Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
 - Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`, generated `Install.ps1`, and `Install-SystemToolsMenu.ps1`; family config and InstallerCore profile parsed as JSON; `InstallerCore\scripts\Sync-InstallerCore.ps1 -VerifyOnly` passed; local-source host update completed; installed manager `RepairAll` completed for SystemTools, TakeOwnership, WhoIsUsingThis, WinAppManager, SystemCleanup, and Firewall; a second host update completed; installed manager `VerifyMenu` passed for all expected child entries.
+
+### Entry - 2026-05-14 (Windows Utilities category and top-level Tool Manager)
+
+- Date: 2026-05-14
+- Problem: The `Explorer` submenu name felt too narrow once it contained ownership and lock-inspection child tools, and `Tool Manager / Updates` was buried one submenu too deep.
+- Root cause: The first category split grouped shell/file utilities under `Explorer`, but the user-facing menu evolved beyond Explorer-only actions.
+- Guardrail/rule: Use `Windows Utilities` as the first category name for `Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`, `Take Ownership`, and `Who is using this?`. Keep `Tool Manager / Updates` as a direct child of `System Tools`, not inside a category.
+- Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, and companion `TakeOwnership` / `WhoIsUsingThis` installers.
+- Validation/tests run: Parser validation passed for generated and repo-local installers; profile/family JSON parsed; live local-source install/update and registry readback planned in this change set.

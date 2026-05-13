@@ -91,20 +91,23 @@ function Add-ToolMenu([string]$ToolKey, [string]$Label, [string]$Icon, [string]$
     Add-Value -Key "$ToolKey\command" -Name '(default)' -Type 'REG_SZ' -Data $Command
 }
 
-function Add-ExplorerGroup([string]$BaseKey) {
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Explorer' -Label 'Explorer' -Icon 'imageres.dll,-102'
+function Add-WindowsUtilitiesGroup([string]$BaseKey) {
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'WindowsUtilities' -Label 'Windows Utilities' -Icon 'imageres.dll,-102'
 }
 
 function Add-AppsGroup([string]$BaseKey) {
     Add-GroupMenu -BaseKey $BaseKey -KeyName 'AppsWindows' -Label 'Apps && Windows' -Icon 'imageres.dll,-5323'
 }
 
-function Add-ExplorerTools([string]$BaseKey, [string]$TargetToken) {
-    $explorerKey = "$BaseKey\shell\Explorer\shell"
-    Add-ToolMenu -ToolKey "$explorerKey\RefreshShell" -Label 'Refresh Shell' -Icon "$iconsDir\refresh_shell.ico" -Command "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
-    Add-ToolMenu -ToolKey "$explorerKey\RestartExplorer" -Label 'Restart Explorer' -Icon "$iconsDir\restart_explorer.ico" -Command "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"$TargetToken`""
-    Add-ToolMenu -ToolKey "$explorerKey\ClearIconCache" -Label 'Clear Icon Cache' -Icon "$iconsDir\Clear-IconCache.ico" -Command "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
-    Add-ToolMenu -ToolKey "$explorerKey\ToolManager" -Label 'Tool Manager / Updates' -Icon 'imageres.dll,-109' -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsManager.vbs`""
+function Add-WindowsUtilitiesTools([string]$BaseKey, [string]$TargetToken) {
+    $utilitiesKey = "$BaseKey\shell\WindowsUtilities\shell"
+    Add-ToolMenu -ToolKey "$utilitiesKey\RefreshShell" -Label 'Refresh Shell' -Icon "$iconsDir\refresh_shell.ico" -Command "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
+    Add-ToolMenu -ToolKey "$utilitiesKey\RestartExplorer" -Label 'Restart Explorer' -Icon "$iconsDir\restart_explorer.ico" -Command "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"$TargetToken`""
+    Add-ToolMenu -ToolKey "$utilitiesKey\ClearIconCache" -Label 'Clear Icon Cache' -Icon "$iconsDir\Clear-IconCache.ico" -Command "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
+}
+
+function Add-ToolManager([string]$BaseKey) {
+    Add-ToolMenu -ToolKey "$BaseKey\shell\ToolManager" -Label 'Tool Manager / Updates' -Icon 'imageres.dll,-109' -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsManager.vbs`""
 }
 
 function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
@@ -116,23 +119,27 @@ function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
     Add-RootMenu -BaseKey $fileBaseKey
-    Add-ExplorerGroup -BaseKey $fileBaseKey
+    Add-ToolManager -BaseKey $fileBaseKey
+    Add-WindowsUtilitiesGroup -BaseKey $fileBaseKey
 
     Add-RootMenu -BaseKey $directoryBaseKey
-    Add-ExplorerGroup -BaseKey $directoryBaseKey
-    Add-ExplorerTools -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-ToolManager -BaseKey $directoryBaseKey
+    Add-WindowsUtilitiesGroup -BaseKey $directoryBaseKey
+    Add-WindowsUtilitiesTools -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-AppsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
 
     Add-RootMenu -BaseKey $backgroundBaseKey
-    Add-ExplorerGroup -BaseKey $backgroundBaseKey
-    Add-ExplorerTools -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-ToolManager -BaseKey $backgroundBaseKey
+    Add-WindowsUtilitiesGroup -BaseKey $backgroundBaseKey
+    Add-WindowsUtilitiesTools -BaseKey $backgroundBaseKey -TargetToken '%V'
     Add-AppsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
 
     Add-RootMenu -BaseKey $desktopBaseKey -Desktop
-    Add-ExplorerGroup -BaseKey $desktopBaseKey
-    Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
+    Add-ToolManager -BaseKey $desktopBaseKey
+    Add-WindowsUtilitiesGroup -BaseKey $desktopBaseKey
+    Add-WindowsUtilitiesTools -BaseKey $desktopBaseKey -TargetToken '%V'
     Add-AppsGroup -BaseKey $desktopBaseKey
 
     Add-RootMenu -BaseKey $exeBaseKey
