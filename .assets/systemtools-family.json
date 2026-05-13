@@ -68,7 +68,7 @@
       "repo_folder": "Firewall",
       "role": "child",
       "order": 60,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallManager"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\exefile\\shell\\FirewallManager"
     }
   ]
 }

@@ -41,10 +41,12 @@ System Tools
 │   ├── Take Ownership
 │   ├── Who is using this?
 │   ├── WinAppManager
-│   ├── Windows Update Cleanup
-│   └── Firewall Rules (on .exe files)
+│   └── Windows Update Cleanup (folder/desktop background)
 └── Tool Manager / Updates
 ```
+
+On single-file targets such as `.md`, `System Tools > Windows` is intentionally limited to file-safe tools: `Take Ownership` and `Who is using this?`.
+Firewall rules are not nested under `System Tools`; `.exe` files keep their own top-level `Firewall Rules` entry.
 
 Planned additions such as `Make Symlink / Junction` can be added later under `Windows` without merging every tool into one giant repo.
 

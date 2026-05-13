@@ -12,7 +12,6 @@ $fileBaseKey = 'HKCU\Software\Classes\*\shell\SystemTools'
 $directoryBaseKey = 'HKCU\Software\Classes\Directory\shell\SystemTools'
 $backgroundBaseKey = 'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
 $desktopBaseKey = 'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools'
-$exeBaseKey = 'HKCU\Software\Classes\exefile\shell\SystemTools'
 $legacyKeys = @(
     'HKCR\*\shell\SystemTools',
     'HKCU\Software\Classes\*\shell\SystemTools',
@@ -122,7 +121,7 @@ function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
     Add-RootMenu -BaseKey $fileBaseKey
-    Add-ExplorerGroup -BaseKey $fileBaseKey
+    Add-WindowsGroup -BaseKey $fileBaseKey
     Add-ToolManager -BaseKey $fileBaseKey
 
     Add-RootMenu -BaseKey $directoryBaseKey
@@ -145,9 +144,6 @@ function Install-Menu {
     Add-WindowsGroup -BaseKey $desktopBaseKey
     Add-ToolManager -BaseKey $desktopBaseKey
 
-    Add-RootMenu -BaseKey $exeBaseKey
-    Add-WindowsGroup -BaseKey $exeBaseKey
-
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
 }
 
@@ -157,7 +153,7 @@ function Uninstall-Menu {
 }
 
 function Show-Status {
-    $queries = @($fileBaseKey, $directoryBaseKey, $backgroundBaseKey, $desktopBaseKey, $exeBaseKey) | ForEach-Object {
+    $queries = @($fileBaseKey, $directoryBaseKey, $backgroundBaseKey, $desktopBaseKey) | ForEach-Object {
         Reg-Run -RegArgs @('query', $_) -IgnoreNotFound
     }
 

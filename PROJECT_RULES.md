@@ -485,3 +485,12 @@
 - Guardrail/rule: Keep `Explorer` for shell actions only (`Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`). Use `Windows` for app/Windows/file utilities (`Manage Folder PATH...`, `Take Ownership`, `Who is using this?`, `WinAppManager`, `Windows Update Cleanup`, `Firewall Rules`). Keep `Tool Manager / Updates` as the last direct child under `System Tools`, using lexical key `z_ToolManager` plus `CommandFlags=0x20` for separator-before behavior.
 - Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, and companion child profiles/installers.
 - Validation/tests run: Pending parser validation, local-source installs, manager `VerifyMenu`, and HKCU registry readback after regeneration.
+
+### Entry - 2026-05-14 (Single-file menu and Firewall top-level correction)
+
+- Date: 2026-05-14
+- Problem: Right-clicking a single file such as `.md` showed an `Explorer` submenu, and `.exe` Firewall was incorrectly grouped inside `System Tools`.
+- Root cause: The host wildcard branch reused the folder category layout even though file targets only need file-safe tools.
+- Guardrail/rule: On single-file targets, `System Tools` should expose `Windows` for file-safe child tools (`Take Ownership`, `Who is using this?`) plus the bottom `Tool Manager / Updates`. Do not create `Explorer` for `*\shell\SystemTools`. Firewall stays as a separate top-level `.exe` context-menu entry.
+- Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, `D:\Users\joty79\scripts\InstallerCore\profiles\Firewall.json`.
+- Validation/tests run: Pending parser validation, local-source installs, manager `VerifyMenu`, and HKCU registry readback.

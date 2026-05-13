@@ -177,7 +177,11 @@ $script:ProfileJson = @'
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\AppsWindows",
     "HKCR\\exefile\\shell\\SystemTools\\shell\\ToolManager",
     "HKCR\\exefile\\shell\\SystemTools\\shell\\WindowsUtilities",
-    "HKCR\\exefile\\shell\\SystemTools\\shell\\AppsWindows"
+    "HKCR\\exefile\\shell\\SystemTools\\shell\\AppsWindows",
+    "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
+    "HKCR\\exefile\\shell\\SystemTools",
+    "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
+    "HKCR\\exefile\\shell\\SystemTools\\shell\\Windows"
   ],
   "registry_values": [
     {
@@ -199,24 +203,6 @@ $script:ProfileJson = @'
       "value": "imageres.dll,-109"
     },
     {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-102"
-    },
-    {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
       "name": "MUIVerb",
       "type": "REG_SZ",
@@ -233,78 +219,6 @@ $script:ProfileJson = @'
       "name": "Icon",
       "type": "REG_SZ",
       "value": "imageres.dll,-109"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-102"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Refresh Shell"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\refresh_shell.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Restart Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\restart_explorer.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RestartExplorer.vbs\" \"%1\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Clear Icon Cache"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
@@ -359,78 +273,6 @@ $script:ProfileJson = @'
       "name": "Icon",
       "type": "REG_SZ",
       "value": "imageres.dll,-109"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-102"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Refresh Shell"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\refresh_shell.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Restart Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\restart_explorer.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RestartExplorer.vbs\" \"%V\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Clear Icon Cache"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
@@ -493,78 +335,6 @@ $script:ProfileJson = @'
       "value": "Bottom"
     },
     {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-102"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Refresh Shell"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\refresh_shell.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Restart Explorer"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\restart_explorer.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-RestartExplorer.vbs\" \"%V\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Clear Icon Cache"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
-    },
-    {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
       "name": "MUIVerb",
       "type": "REG_SZ",
@@ -578,42 +348,6 @@ $script:ProfileJson = @'
     },
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "System Tools"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-109"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Windows"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
       "value": "imageres.dll,-5323"
@@ -713,6 +447,24 @@ $script:ProfileJson = @'
       "name": "CommandFlags",
       "type": "REG_DWORD",
       "value": "0x00000020"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Windows"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-5323"
     }
   ],
   "registry_verify": [
@@ -737,49 +489,14 @@ $script:ProfileJson = @'
       "expected": ""
     },
     {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "MUIVerb",
       "expected": "Windows"
     },
     {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-RefreshShell.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-RestartExplorer.vbs\" \"%1\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-ClearIconCache.vbs\""
-    },
-    {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
       "name": "(default)",
       "expected": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsMenu.vbs\" \"%1\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RestartExplorer\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-RestartExplorer.vbs\" \"%V\""
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
@@ -790,16 +507,6 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
       "name": "Position",
       "expected": "Bottom"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\ClearIconCache",
-      "name": "Icon",
-      "expected": "{InstallRoot}\\.assets\\icons\\Clear-IconCache.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
-      "name": "MUIVerb",
-      "expected": "Windows"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager\\command",
@@ -825,6 +532,11 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager",
       "name": "CommandFlags",
       "expected": "32"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
+      "name": "MUIVerb",
+      "expected": "Windows"
     }
   ],
   "wrapper_patches": [
