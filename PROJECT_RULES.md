@@ -476,3 +476,12 @@
 - Guardrail/rule: Use `Windows Utilities` as the first category name for `Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`, `Take Ownership`, and `Who is using this?`. Keep `Tool Manager / Updates` as a direct child of `System Tools`, not inside a category.
 - Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, and companion `TakeOwnership` / `WhoIsUsingThis` installers.
 - Validation/tests run: Parser validation passed for generated and repo-local installers; profile/family JSON parsed; live local-source install/update and registry readback planned in this change set.
+
+### Entry - 2026-05-14 (Corrected Windows category and bottom manager)
+
+- Date: 2026-05-14
+- Problem: The previous menu correction renamed the wrong category: `Explorer` was changed to `Windows Utilities`, while the intended request was to rename `Apps & Windows` to `Windows` and move ownership/lock tools there.
+- Root cause: The visual instruction was interpreted from the earlier proposed layout instead of the latest explicit user correction.
+- Guardrail/rule: Keep `Explorer` for shell actions only (`Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`). Use `Windows` for app/Windows/file utilities (`Manage Folder PATH...`, `Take Ownership`, `Who is using this?`, `WinAppManager`, `Windows Update Cleanup`, `Firewall Rules`). Keep `Tool Manager / Updates` as the last direct child under `System Tools`, using lexical key `z_ToolManager` plus `CommandFlags=0x20` for separator-before behavior.
+- Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, and companion child profiles/installers.
+- Validation/tests run: Pending parser validation, local-source installs, manager `VerifyMenu`, and HKCU registry readback after regeneration.

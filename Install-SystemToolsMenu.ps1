@@ -85,65 +85,68 @@ function Add-GroupMenu([string]$BaseKey, [string]$KeyName, [string]$Label, [stri
     Add-Value -Key $groupKey -Name 'Icon' -Type 'REG_SZ' -Data $Icon
 }
 
-function Add-ToolMenu([string]$ToolKey, [string]$Label, [string]$Icon, [string]$Command) {
+function Add-ToolMenu([string]$ToolKey, [string]$Label, [string]$Icon, [string]$Command, [string]$CommandFlags = '') {
     Add-Value -Key $ToolKey -Name 'MUIVerb' -Type 'REG_SZ' -Data $Label
     Add-Value -Key $ToolKey -Name 'Icon' -Type 'REG_SZ' -Data $Icon
+    if (-not [string]::IsNullOrWhiteSpace($CommandFlags)) {
+        Add-Value -Key $ToolKey -Name 'CommandFlags' -Type 'REG_DWORD' -Data $CommandFlags
+    }
     Add-Value -Key "$ToolKey\command" -Name '(default)' -Type 'REG_SZ' -Data $Command
 }
 
-function Add-WindowsUtilitiesGroup([string]$BaseKey) {
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'WindowsUtilities' -Label 'Windows Utilities' -Icon 'imageres.dll,-102'
+function Add-ExplorerGroup([string]$BaseKey) {
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Explorer' -Label 'Explorer' -Icon 'imageres.dll,-102'
 }
 
-function Add-AppsGroup([string]$BaseKey) {
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'AppsWindows' -Label 'Apps && Windows' -Icon 'imageres.dll,-5323'
+function Add-WindowsGroup([string]$BaseKey) {
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Windows' -Label 'Windows' -Icon 'imageres.dll,-5323'
 }
 
-function Add-WindowsUtilitiesTools([string]$BaseKey, [string]$TargetToken) {
-    $utilitiesKey = "$BaseKey\shell\WindowsUtilities\shell"
-    Add-ToolMenu -ToolKey "$utilitiesKey\RefreshShell" -Label 'Refresh Shell' -Icon "$iconsDir\refresh_shell.ico" -Command "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
-    Add-ToolMenu -ToolKey "$utilitiesKey\RestartExplorer" -Label 'Restart Explorer' -Icon "$iconsDir\restart_explorer.ico" -Command "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"$TargetToken`""
-    Add-ToolMenu -ToolKey "$utilitiesKey\ClearIconCache" -Label 'Clear Icon Cache' -Icon "$iconsDir\Clear-IconCache.ico" -Command "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
+function Add-ExplorerTools([string]$BaseKey, [string]$TargetToken) {
+    $explorerKey = "$BaseKey\shell\Explorer\shell"
+    Add-ToolMenu -ToolKey "$explorerKey\RefreshShell" -Label 'Refresh Shell' -Icon "$iconsDir\refresh_shell.ico" -Command "wscript.exe `"$scriptRoot\Launch-RefreshShell.vbs`""
+    Add-ToolMenu -ToolKey "$explorerKey\RestartExplorer" -Label 'Restart Explorer' -Icon "$iconsDir\restart_explorer.ico" -Command "wscript.exe `"$scriptRoot\Launch-RestartExplorer.vbs`" `"$TargetToken`""
+    Add-ToolMenu -ToolKey "$explorerKey\ClearIconCache" -Label 'Clear Icon Cache' -Icon "$iconsDir\Clear-IconCache.ico" -Command "wscript.exe `"$scriptRoot\Launch-ClearIconCache.vbs`""
 }
 
 function Add-ToolManager([string]$BaseKey) {
-    Add-ToolMenu -ToolKey "$BaseKey\shell\ToolManager" -Label 'Tool Manager / Updates' -Icon 'imageres.dll,-109' -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsManager.vbs`""
+    Add-ToolMenu -ToolKey "$BaseKey\shell\z_ToolManager" -Label 'Tool Manager / Updates' -Icon 'imageres.dll,-109' -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsManager.vbs`"" -CommandFlags '0x00000020'
 }
 
 function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
-    $appsKey = "$BaseKey\shell\AppsWindows\shell\PathManager"
-    Add-ToolMenu -ToolKey $appsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
+    $windowsKey = "$BaseKey\shell\Windows\shell\PathManager"
+    Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
 }
 
 function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
     Add-RootMenu -BaseKey $fileBaseKey
+    Add-ExplorerGroup -BaseKey $fileBaseKey
     Add-ToolManager -BaseKey $fileBaseKey
-    Add-WindowsUtilitiesGroup -BaseKey $fileBaseKey
 
     Add-RootMenu -BaseKey $directoryBaseKey
-    Add-ToolManager -BaseKey $directoryBaseKey
-    Add-WindowsUtilitiesGroup -BaseKey $directoryBaseKey
-    Add-WindowsUtilitiesTools -BaseKey $directoryBaseKey -TargetToken '%1'
-    Add-AppsGroup -BaseKey $directoryBaseKey
+    Add-ExplorerGroup -BaseKey $directoryBaseKey
+    Add-ExplorerTools -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-WindowsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-ToolManager -BaseKey $directoryBaseKey
 
     Add-RootMenu -BaseKey $backgroundBaseKey
-    Add-ToolManager -BaseKey $backgroundBaseKey
-    Add-WindowsUtilitiesGroup -BaseKey $backgroundBaseKey
-    Add-WindowsUtilitiesTools -BaseKey $backgroundBaseKey -TargetToken '%V'
-    Add-AppsGroup -BaseKey $backgroundBaseKey
+    Add-ExplorerGroup -BaseKey $backgroundBaseKey
+    Add-ExplorerTools -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-ToolManager -BaseKey $backgroundBaseKey
 
     Add-RootMenu -BaseKey $desktopBaseKey -Desktop
+    Add-ExplorerGroup -BaseKey $desktopBaseKey
+    Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
+    Add-WindowsGroup -BaseKey $desktopBaseKey
     Add-ToolManager -BaseKey $desktopBaseKey
-    Add-WindowsUtilitiesGroup -BaseKey $desktopBaseKey
-    Add-WindowsUtilitiesTools -BaseKey $desktopBaseKey -TargetToken '%V'
-    Add-AppsGroup -BaseKey $desktopBaseKey
 
     Add-RootMenu -BaseKey $exeBaseKey
-    Add-AppsGroup -BaseKey $exeBaseKey
+    Add-WindowsGroup -BaseKey $exeBaseKey
 
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
 }

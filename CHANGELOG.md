@@ -8,14 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Tool Manager install/repair flow**: `SystemToolsManager.ps1` can now install/repair all tools, install/repair one selected tool, update all installed tools, update one selected tool, and verify expected context-menu registry entries.
 - **Expandable family config**: Added `.assets\systemtools-family.json` so future tools can be added to the manager without hardcoding the family list in the script.
-- **Tool Manager / Updates** (`SystemToolsManager.ps1`): Added a `System Tools > Explorer` context-menu entry that opens a Windows Terminal update center for the SystemTools tool family.
-- **Structured System Tools Menu**: Added `Explorer` and `Apps & Windows` category folders under the shared `System Tools` context-menu parent so separately maintained tools can appear as one organized toolbox.
+- **Tool Manager / Updates** (`SystemToolsManager.ps1`): Added a direct `System Tools > Tool Manager / Updates` context-menu entry that opens a Windows Terminal update center for the SystemTools tool family.
+- **Structured System Tools Menu**: Added `Explorer` and `Windows` category folders under the shared `System Tools` context-menu parent so separately maintained tools can appear as one organized toolbox.
 - **Clear Icon Cache** (`Clear-IconCache.ps1`): Comprehensive icon, thumbnail, and UWP AppIconCache rebuild script with `System Tools` context-menu integration on folder, folder background, and desktop background branches. Kills all shell processes (Explorer, SearchHost, ShellExperienceHost, StartMenuExperienceHost, TextInputHost) to release file locks, deletes all cache databases, uses `ie4uinit -show` for icon refresh, and schedules locked files for boot-time deletion via RunOnce. More thorough than BleachBit's thumbnail cleaner (which misses icon cache, AppIconCache, and locked file handling).
 - **PSRemoting Manager** (`Toggle-PSRemoting.ps1`): Interactive UI to safely Enable/Disable WinRM, and manage `TrustedHosts` (Add or Clear).
 - **Remote Environment Export**: `Export-EnvReadable.ps1` now supports fetching environment variables from a remote computer via PSRemoting/WinRM.
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.10**: Corrected the context-menu layout so `Explorer` stays as the shell-action group, `Apps & Windows` is renamed to `Windows`, `Take Ownership` and `Who is using this?` move under `Windows`, and `Tool Manager / Updates` stays as the final top-level item with a separator.
 - **Version 1.0.9**: Bumped `app-metadata.json` for the `Windows Utilities` category rename and top-level Tool Manager placement.
 - **Context Menu Layout**: Renamed `Explorer` category to `Windows Utilities` and moved `Tool Manager / Updates` to the first level under `System Tools`.
 - **Version 1.0.8**: Bumped `app-metadata.json` for the install/repair capable Tool Manager and parent-preserving host installer profile.

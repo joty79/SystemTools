@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>A collection of native Windows context-menu utilities built with PowerShell 7</b><br>
-  <sub>Right-click any folder → <i>System Tools</i> → <i>Windows Utilities</i> or <i>Apps &amp; Windows</i>.</sub>
+  <sub>Right-click any folder → <i>System Tools</i> → <i>Explorer</i> or <i>Windows</i>.</sub>
 </p>
 
 ---
@@ -32,21 +32,21 @@
 
 ```text
 System Tools
-├── Tool Manager / Updates
-├── Windows Utilities
+├── Explorer
 │   ├── Refresh Shell
 │   ├── Restart Explorer
-│   ├── Clear Icon Cache
+│   └── Clear Icon Cache
+├── Windows
+│   ├── Manage Folder PATH...
 │   ├── Take Ownership
-│   └── Who is using this?
-└── Apps & Windows
-    ├── Manage Folder PATH...
-    ├── WinAppManager
-    ├── Windows Update Cleanup
-    └── Firewall Rules (on .exe files)
+│   ├── Who is using this?
+│   ├── WinAppManager
+│   ├── Windows Update Cleanup
+│   └── Firewall Rules (on .exe files)
+└── Tool Manager / Updates
 ```
 
-Planned additions such as `Make Symlink / Junction` can be added later under `Apps & Windows` without merging every tool into one giant repo.
+Planned additions such as `Make Symlink / Junction` can be added later under `Windows` without merging every tool into one giant repo.
 
 ---
 
@@ -103,7 +103,7 @@ The COM method asks the **already-running** shell to open a folder window, inste
 
 ### Usage
 
-**From context menu** — right-click any folder → *System Tools* → *Windows Utilities* → *Restart Explorer*
+**From context menu** — right-click any folder → *System Tools* → *Explorer* → *Restart Explorer*
 
 **From terminal:**
 
@@ -168,7 +168,7 @@ Provides an interactive console UI block that allows you to safely:
 
 ### Usage
 
-**From context menu** — right-click any folder → *System Tools* → *Apps & Windows* → *Manage Folder PATH...*
+**From context menu** — right-click any folder → *System Tools* → *Windows* → *Manage Folder PATH...*
 
 Opens a resize-safe arrow menu in Windows Terminal:
 
@@ -267,7 +267,7 @@ No processes killed. No windows closed. Just signals.
 
 ### Usage
 
-**From context menu** — right-click any folder → *System Tools* → *Windows Utilities* → *Refresh Shell*
+**From context menu** — right-click any folder → *System Tools* → *Explorer* → *Refresh Shell*
 
 **From terminal:**
 
@@ -321,7 +321,7 @@ Kill all shell processes → Delete iconcache*.db + thumbcache*.db + AppIconCach
 
 ### Usage
 
-**From context menu** — *Right-click a folder, folder background, or desktop background → System Tools → Windows Utilities → Clear Icon Cache*
+**From context menu** — *Right-click a folder, folder background, or desktop background → System Tools → Explorer → Clear Icon Cache*
 
 **From terminal (requires Admin):**
 
@@ -357,7 +357,7 @@ pwsh -ExecutionPolicy Bypass -File .\Install.ps1 -Action Update
 pwsh -ExecutionPolicy Bypass -File .\Install.ps1 -Action Uninstall
 ```
 
-This installs `SystemTools` under `%LOCALAPPDATA%\SystemToolsContext`, writes the shared `System Tools` parent menu plus the `Windows Utilities` / `Apps & Windows` category folders, and patches the hidden VBS launchers to the deployed install path.
+This installs `SystemTools` under `%LOCALAPPDATA%\SystemToolsContext`, writes the shared `System Tools` parent menu plus the `Explorer` / `Windows` category folders, and patches the hidden VBS launchers to the deployed install path.
 
 ### Registry-Only Alternative
 

@@ -11,8 +11,8 @@
       "role": "host",
       "order": 10,
       "verify_registry_keys": [
-        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\ToolManager",
-        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\AppsWindows\\shell\\PathManager"
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager",
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager"
       ]
     },
     {
@@ -24,7 +24,7 @@
       "repo_folder": "TakeOwnership",
       "role": "child",
       "order": 20,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\WindowsUtilities\\shell\\TakeOwnership"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\TakeOwnership"
     },
     {
       "name": "WhoIsUsingThis",
@@ -35,7 +35,7 @@
       "repo_folder": "WhoIsUsingThis",
       "role": "child",
       "order": 30,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\WindowsUtilities\\shell\\WhoIsUsingThis"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\WhoIsUsingThis"
     },
     {
       "name": "WinAppManager",
@@ -46,7 +46,7 @@
       "repo_folder": "WinAppManager",
       "role": "child",
       "order": 40,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\AppsWindows\\shell\\WinAppManager"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\WinAppManager"
     },
     {
       "name": "SystemCleanup",
@@ -57,7 +57,7 @@
       "repo_folder": "SystemCleanup",
       "role": "child",
       "order": 50,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\AppsWindows\\shell\\SystemCleanup"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\SystemCleanup"
     },
     {
       "name": "Firewall",
@@ -68,7 +68,7 @@
       "repo_folder": "Firewall",
       "role": "child",
       "order": 60,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\AppsWindows\\shell\\FirewallManager"
+      "verify_registry_keys": "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallManager"
     }
   ]
 }
