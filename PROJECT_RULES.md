@@ -494,3 +494,12 @@
 - Guardrail/rule: On single-file targets, `System Tools` should expose `Windows` for file-safe child tools (`Take Ownership`, `Who is using this?`) plus the bottom `Tool Manager / Updates`. Do not create `Explorer` for `*\shell\SystemTools`. Firewall stays as a separate top-level `.exe` context-menu entry.
 - Files affected: `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `Install.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`, `D:\Users\joty79\scripts\InstallerCore\profiles\Firewall.json`.
 - Validation/tests run: Pending parser validation, local-source installs, manager `VerifyMenu`, and HKCU registry readback.
+
+### Entry - 2026-05-14 (Wildcard cleanup must not hit folder surfaces)
+
+- Date: 2026-05-14
+- Problem: The single-file cleanup removed the `Explorer` submenu not only from `*\shell\SystemTools`, but also from folder, folder-background, and desktop context-menu surfaces.
+- Root cause: A wildcard-style path match was used while editing the generated profile, so the literal `*` branch was treated too broadly.
+- Guardrail/rule: When changing wildcard file context-menu behavior, use exact/literal branch checks. `*\shell\SystemTools` gets only `Windows` + `z_ToolManager`; `Directory`, `Directory\Background`, and `DesktopBackground` keep `Explorer`, `Windows`, and `z_ToolManager`.
+- Files affected: `Install.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
+- Validation/tests run: Parser validation passed; local-source update completed; `reg.exe` readback confirmed file/folder/background/desktop/exe surface children and representative child keys; manager `VerifyMenu` passed.

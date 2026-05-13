@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.12**: Restored folder, folder-background, and desktop Explorer groups after the single-file wildcard cleanup, while keeping all single-file targets limited to Windows file tools plus Tool Manager / Updates.
 - **Version 1.0.11**: Fixed single-file context menus so file targets no longer show the `Explorer` submenu, keep only file-safe tools under `Windows`, and leave Firewall as a top-level `.exe` context-menu entry outside `System Tools`.
 - **Version 1.0.10**: Corrected the context-menu layout so `Explorer` stays as the shell-action group, `Apps & Windows` is renamed to `Windows`, `Take Ownership` and `Who is using this?` move under `Windows`, and `Tool Manager / Updates` stays as the final top-level item with a separator.
 - **Version 1.0.9**: Bumped `app-metadata.json` for the `Windows Utilities` category rename and top-level Tool Manager placement.
@@ -48,3 +49,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **SystemToolsMenu Installer**: Fixed a critical bug in `Install-SystemToolsMenu.ps1` where using the `$args` automatic variable caused silent failures during registry writing.
 - **Menu Icons**: Synced context menu icons in `Install-SystemToolsMenu.ps1` to use the correct `.ico` files from `.assets\icons\` instead of generic `imageres.dll` fallback icons.
 - **SubCommands Empty Data**: Fixed an issue where empty `SubCommands` was written as literal `""` instead of a true empty string during registry installation.
+
