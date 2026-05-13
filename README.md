@@ -18,7 +18,7 @@
 | # | Tool | Description |
 |:-:|------|-------------|
 | 🔁 | **[Restart Explorer](#-restart-explorer)** | Kill & cleanly restart `explorer.exe` — reopens target folder without zombie processes |
-| 🧭 | **[Tool Manager / Updates](#-tool-manager--updates)** | One menu for checking and updating the SystemTools family |
+| 🧭 | **[Tool Manager / Updates](#-tool-manager--updates)** | One menu for installing, repairing, checking, and updating the SystemTools family |
 | 🛡️ | **[PSRemoting Manager](#️-psremoting-manager)** | Interactive UI to safely manage WinRM and TrustedHosts |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
@@ -52,7 +52,7 @@ Planned additions such as `Make Symlink / Junction` can be added later under `Ap
 
 ## 🧭 Tool Manager / Updates
 
-> Check and update the small tools that live under the shared `System Tools` menu.
+> Install, repair, check, and update the small tools that live under the shared `System Tools` menu.
 
 ### Usage
 
@@ -63,10 +63,18 @@ Planned additions such as `Make Symlink / Junction` can be added later under `Ap
 ```powershell
 .\SystemToolsManager.ps1
 .\SystemToolsManager.ps1 -Action Status
+.\SystemToolsManager.ps1 -Action RepairAll
 .\SystemToolsManager.ps1 -Action UpdateAll
+.\SystemToolsManager.ps1 -Action VerifyMenu
 ```
 
-The manager reads each installed tool's `state\install-meta.json`, compares its installed commit with GitHub `master`, and runs the generated `Install.ps1 -Action UpdateGitHub` path for selected tools.
+The manager reads `.assets\systemtools-family.json`, so the family list can grow without rewriting the manager script. For local repair/install it prefers the matching repo checkout discovered from `.codex\REPO_ROOTS.psd1`; for updates it uses each installed tool's generated `Install.ps1 -Action UpdateGitHub` path and compares `state\install-meta.json` commits against GitHub `master`.
+
+| Action | What it does |
+|--------|--------------|
+| `InstallAll` / `RepairAll` | Runs each repo's generated installer from the local checkout when available |
+| `UpdateAll` | Updates installed tools from GitHub through their generated installers |
+| `VerifyMenu` | Checks the expected `System Tools` registry child entries without changing layout |
 
 ---
 
@@ -389,6 +397,7 @@ SystemTools/
 ├── RestartExplorer.ps1           # Restart Explorer — clean shell restart
 ├── RefreshShell.ps1              # Refresh Shell — broadcast refresh signals
 ├── Clear-IconCache.ps1           # Clear Icon Cache — rebuild icon/thumb/UWP caches
+├── .assets/systemtools-family.json # Tool Manager family registry/install config
 ├── Install-SystemToolsMenu.ps1   # Registry installer/uninstaller
 ├── SystemToolsMenu.reg           # Manual registry import (alternative)
 ├── Launch-SystemToolsMenu.vbs    # VBS launcher (no console flash)

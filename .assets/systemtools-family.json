@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "name": "SystemTools",
+      "label": "SystemTools host",
+      "repo": "joty79/SystemTools",
+      "branch": "master",
+      "install_folder": "SystemToolsContext",
+      "repo_folder": "SystemTools",
+      "role": "host",
+      "order": 10,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\ToolManager",
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\AppsWindows\\shell\\PathManager"
+      ]
+    },
+    {
+      "name": "TakeOwnership",
+      "label": "Take Ownership",
+      "repo": "joty79/TakeOwnership",
+      "branch": "master",
+      "install_folder": "TakeOwnershipContext",
+      "repo_folder": "TakeOwnership",
+      "role": "child",
+      "order": 20,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\TakeOwnership"
+      ]
+    },
+    {
+      "name": "WhoIsUsingThis",
+      "label": "Who is using this?",
+      "repo": "joty79/WhoIsUsingThis",
+      "branch": "master",
+      "install_folder": "WhoIsUsingThisContext",
+      "repo_folder": "WhoIsUsingThis",
+      "role": "child",
+      "order": 30,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\WhoIsUsingThis"
+      ]
+    },
+    {
+      "name": "WinAppManager",
+      "label": "WinAppManager",
+      "repo": "joty79/WinAppManager",
+      "branch": "master",
+      "install_folder": "WinAppManager",
+      "repo_folder": "WinAppManager",
+      "role": "child",
+      "order": 40,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\AppsWindows\\shell\\WinAppManager"
+      ]
+    },
+    {
+      "name": "SystemCleanup",
+      "label": "Windows Update Cleanup",
+      "repo": "joty79/SystemCleanup",
+      "branch": "master",
+      "install_folder": "SystemCleanupContext",
+      "repo_folder": "SystemCleanup",
+      "role": "child",
+      "order": 50,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\AppsWindows\\shell\\SystemCleanup"
+      ]
+    },
+    {
+      "name": "Firewall",
+      "label": "Firewall Rules",
+      "repo": "joty79/Firewall",
+      "branch": "master",
+      "install_folder": "FirewallContext",
+      "repo_folder": "Firewall",
+      "role": "child",
+      "order": 60,
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\AppsWindows\\shell\\FirewallManager"
+      ]
+    }
+  ]
+}

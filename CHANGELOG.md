@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Tool Manager install/repair flow**: `SystemToolsManager.ps1` can now install/repair all tools, install/repair one selected tool, update all installed tools, update one selected tool, and verify expected context-menu registry entries.
+- **Expandable family config**: Added `.assets\systemtools-family.json` so future tools can be added to the manager without hardcoding the family list in the script.
 - **Tool Manager / Updates** (`SystemToolsManager.ps1`): Added a `System Tools > Explorer` context-menu entry that opens a Windows Terminal update center for the SystemTools tool family.
 - **Structured System Tools Menu**: Added `Explorer` and `Apps & Windows` category folders under the shared `System Tools` context-menu parent so separately maintained tools can appear as one organized toolbox.
 - **Clear Icon Cache** (`Clear-IconCache.ps1`): Comprehensive icon, thumbnail, and UWP AppIconCache rebuild script with `System Tools` context-menu integration on folder, folder background, and desktop background branches. Kills all shell processes (Explorer, SearchHost, ShellExperienceHost, StartMenuExperienceHost, TextInputHost) to release file locks, deletes all cache databases, uses `ie4uinit -show` for icon refresh, and schedules locked files for boot-time deletion via RunOnce. More thorough than BleachBit's thumbnail cleaner (which misses icon cache, AppIconCache, and locked file handling).
@@ -14,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.8**: Bumped `app-metadata.json` for the install/repair capable Tool Manager and parent-preserving host installer profile.
 - **Version 1.0.7**: Bumped `app-metadata.json` for the new Tool Manager / Updates context-menu entry.
 - **Version 1.0.6**: Restored the two-category `Explorer` / `Apps & Windows` submenu layout by request after temporarily flattening it.
 - **Version 1.0.4**: Bumped `app-metadata.json` for the shared `Explorer` / `Apps & Windows` context-menu layout migration.
@@ -31,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **PSRemoting UI Workflow**: `Toggle-PSRemoting.ps1` now loads the canonical `.codex\tools\PS_UI_Blueprint.psm1` path instead of the old `.gemini` template path, and the TrustedHosts actions now re-read live state before editing.
 
 ### Fixed
+- **Host update no longer removes child menus**: Regenerated `Install.ps1` from an `InstallerCore` profile that cleans only old host-owned child keys instead of deleting the shared `SystemTools` parent tree.
 - **Context Menu WT Window Reuse**: The PATH Manager launcher now asks Windows Terminal for a new window instead of attaching a new tab to whichever admin WT window was already open.
 - **UI Blueprint Import Flash**: Suppressed the transient `Import-Module` unapproved-verb warning when loading `PS_UI_Blueprint.psm1`, removing a two-frame startup message before the arrow UI renders.
 - **Installer Prompt Crash**: Fixed generated `Install.ps1` crashing in non-interactive hosts when `Read-Host` returns `$null`; prompts now cancel cleanly unless `-Force` is supplied.
