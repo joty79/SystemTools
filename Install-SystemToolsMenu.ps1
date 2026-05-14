@@ -23,9 +23,18 @@ $legacyKeys = @(
     'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools',
     'HKCR\exefile\shell\SystemTools',
     'HKCU\Software\Classes\exefile\shell\SystemTools',
-    # Cleanup old standalone Firewall context menu entries
+    # Cleanup old standalone context menu entries
     'HKCU\Software\Classes\exefile\shell\FirewallManager',
-    'HKCU\Software\Classes\Directory\shell\FirewallManager'
+    'HKCU\Software\Classes\Directory\shell\FirewallManager',
+    'HKCR\DesktopBackground\Shell\killall',
+    'HKCR\Directory\Background\shell\killall',
+    'HKCR\DesktopBackground\Shell\SafeMode',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\NormalMode',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\SafeMode',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\RestartNow',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ShutdownNow',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\SleepNow',
+    'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\LogOffNow'
 )
 
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
@@ -36,12 +45,18 @@ $requiredFiles = @(
     'RefreshShell.ps1',
     'Clear-IconCache.ps1',
     'SystemToolsManager.ps1',
+    'KillAll.ps1',
+    'SafeMode.ps1',
+    'NormalMode.ps1',
     'Launch-SystemToolsMenu.vbs',
     'Launch-RestartExplorer.vbs',
     'Launch-RefreshShell.vbs',
     'Launch-ClearIconCache.vbs',
     'Launch-SystemToolsManager.vbs',
-    'Launch-FirewallMenu.vbs'
+    'Launch-FirewallMenu.vbs',
+    'KillAll_Silent.vbs',
+    'Launch-SafeMode.vbs',
+    'Launch-NormalMode.vbs'
 )
 
 foreach ($file in $requiredFiles) {
@@ -98,11 +113,11 @@ function Add-ToolMenu([string]$ToolKey, [string]$Label, [string]$Icon, [string]$
 }
 
 function Add-ExplorerGroup([string]$BaseKey) {
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Explorer' -Label 'Explorer' -Icon 'imageres.dll,-102'
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Explorer' -Label 'Explorer' -Icon "$iconsDir\explorer.ico"
 }
 
 function Add-WindowsGroup([string]$BaseKey) {
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Windows' -Label 'Windows' -Icon 'imageres.dll,-5323'
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'Windows' -Label 'Windows' -Icon "$iconsDir\windows.ico"
 }
 
 function Add-ExplorerTools([string]$BaseKey, [string]$TargetToken) {
@@ -131,35 +146,58 @@ function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
     }
 }
 
+function Add-KillAll([string]$BaseKey) {
+    $explorerKey = "$BaseKey\shell\Explorer\shell\KillAll"
+    Add-ToolMenu -ToolKey $explorerKey -Label 'Kill All Windows' -Icon "$iconsDir\killall.ico" -Command "wscript.exe `"$scriptRoot\KillAll_Silent.vbs`""
+}
+
+function Add-SafeMode([string]$BaseKey) {
+    $safeModeGroup = "$BaseKey\shell\SafeMode"
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'SafeMode' -Label 'Safe Mode / Power' -Icon "$iconsDir\safemode.ico"
+    Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`""
+    Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootNormal" -Label 'Boot in Normal Mode' -Icon 'imageres.dll,-5323' -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
+    Add-ToolMenu -ToolKey "$safeModeGroup\shell\Restart" -Label 'Restart' -Icon 'shell32.dll,-239' -Command 'shutdown.exe /r /t 0'
+    Add-ToolMenu -ToolKey "$safeModeGroup\shell\Shutdown" -Label 'Shutdown' -Icon 'shell32.dll,-216' -Command 'shutdown.exe /s /t 0'
+    Add-ToolMenu -ToolKey "$safeModeGroup\shell\LogOff" -Label 'Log Off' -Icon 'shell32.dll,-325' -Command 'shutdown.exe /l'
+}
+
 function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
+    # File context (*)
     Add-RootMenu -BaseKey $fileBaseKey
     Add-WindowsGroup -BaseKey $fileBaseKey
     Add-FirewallRules -BaseKey $fileBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $fileBaseKey
 
+    # Folder context (Directory)
     Add-RootMenu -BaseKey $directoryBaseKey
     Add-ExplorerGroup -BaseKey $directoryBaseKey
     Add-ExplorerTools -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-KillAll -BaseKey $directoryBaseKey
     Add-WindowsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-FirewallRules -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $directoryBaseKey
 
+    # Background context (inside folders)
     Add-RootMenu -BaseKey $backgroundBaseKey
     Add-ExplorerGroup -BaseKey $backgroundBaseKey
     Add-ExplorerTools -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-KillAll -BaseKey $backgroundBaseKey
     Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
     Add-FirewallRules -BaseKey $backgroundBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $backgroundBaseKey
 
+    # Desktop context
     Add-RootMenu -BaseKey $desktopBaseKey -Desktop
     Add-ExplorerGroup -BaseKey $desktopBaseKey
     Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
+    Add-KillAll -BaseKey $desktopBaseKey
     Add-WindowsGroup -BaseKey $desktopBaseKey
     Add-FirewallRules -BaseKey $desktopBaseKey -TargetToken ''
+    Add-SafeMode -BaseKey $desktopBaseKey
     Add-ToolManager -BaseKey $desktopBaseKey
 
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
