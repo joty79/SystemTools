@@ -22,7 +22,10 @@ $legacyKeys = @(
     'HKCR\DesktopBackground\Shell\SystemTools',
     'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools',
     'HKCR\exefile\shell\SystemTools',
-    'HKCU\Software\Classes\exefile\shell\SystemTools'
+    'HKCU\Software\Classes\exefile\shell\SystemTools',
+    # Cleanup old standalone Firewall context menu entries
+    'HKCU\Software\Classes\exefile\shell\FirewallManager',
+    'HKCU\Software\Classes\Directory\shell\FirewallManager'
 )
 
 $scriptRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
@@ -37,7 +40,8 @@ $requiredFiles = @(
     'Launch-RestartExplorer.vbs',
     'Launch-RefreshShell.vbs',
     'Launch-ClearIconCache.vbs',
-    'Launch-SystemToolsManager.vbs'
+    'Launch-SystemToolsManager.vbs',
+    'Launch-FirewallMenu.vbs'
 )
 
 foreach ($file in $requiredFiles) {
@@ -117,11 +121,22 @@ function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
     Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
 }
 
+function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
+    $windowsKey = "$BaseKey\shell\Windows\shell\FirewallRules"
+    if ([string]::IsNullOrWhiteSpace($TargetToken)) {
+        # Desktop/Background with no specific target: open manager only
+        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`""
+    } else {
+        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`" `"$TargetToken`""
+    }
+}
+
 function Install-Menu {
     foreach ($k in $legacyKeys) { Remove-Key -Key $k }
 
     Add-RootMenu -BaseKey $fileBaseKey
     Add-WindowsGroup -BaseKey $fileBaseKey
+    Add-FirewallRules -BaseKey $fileBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $fileBaseKey
 
     Add-RootMenu -BaseKey $directoryBaseKey
@@ -129,6 +144,7 @@ function Install-Menu {
     Add-ExplorerTools -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-WindowsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-FirewallRules -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $directoryBaseKey
 
     Add-RootMenu -BaseKey $backgroundBaseKey
@@ -136,12 +152,14 @@ function Install-Menu {
     Add-ExplorerTools -BaseKey $backgroundBaseKey -TargetToken '%V'
     Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-FirewallRules -BaseKey $backgroundBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $backgroundBaseKey
 
     Add-RootMenu -BaseKey $desktopBaseKey -Desktop
     Add-ExplorerGroup -BaseKey $desktopBaseKey
     Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
     Add-WindowsGroup -BaseKey $desktopBaseKey
+    Add-FirewallRules -BaseKey $desktopBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $desktopBaseKey
 
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
