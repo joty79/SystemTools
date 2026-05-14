@@ -1644,7 +1644,7 @@ function RunInstallOrUpdate([ValidateSet('Install', 'Update')] [string]$Mode) {
     WriteRegistry -InstallRoot $InstallPath
     $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
     if (Test-Path -LiteralPath $customInstaller) {
-        & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install
+        & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install | Out-Null
     }
     $regOk = VerifyRegistry -InstallRoot $InstallPath
     SetUninstall -InstallRoot $InstallPath
@@ -1667,7 +1667,7 @@ function RunRegistryRepair {
         WriteRegistry -InstallRoot $InstallPath
         $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
         if (Test-Path -LiteralPath $customInstaller) {
-            & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install
+            & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install | Out-Null
         }
         $regOk = VerifyRegistry -InstallRoot $InstallPath
         if ($script:RegistryCleanupNeedsElevation -and (Test-IsElevated)) {
