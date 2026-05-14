@@ -43,13 +43,12 @@ System Tools
 │   ├── Who is using this?
 │   ├── WinAppManager
 │   ├── Windows Update Cleanup (folder/desktop background)
-│   └── Power Options (desktop background)
-│       ├── Boot in Safe Mode
-│       ├── Boot in Normal Mode
-│       ├── Restart
-│       ├── Shutdown
-│       ├── Sleep
-│       └── Log Off
+│   ├── Boot in Safe Mode (desktop background)
+│   ├── Boot in Normal Mode (desktop background)
+│   ├── Restart (desktop background)
+│   ├── Shutdown (desktop background)
+│   ├── Sleep (desktop background)
+│   └── Log Off (desktop background)
 └── Tool Manager / Updates
 ```
 

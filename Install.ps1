@@ -219,7 +219,9 @@ $script:ProfileJson = @'
     "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
     "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\SafeModeOptions",
-    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\SafeModeOptions"
+    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\SafeModeOptions",
+    "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
+    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions"
   ],
   "registry_values": [
     {
@@ -655,132 +657,6 @@ $script:ProfileJson = @'
       "value": "imageres.dll,-5323"
     },
     {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Power Options"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "shell32.dll,-216"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootSafe",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Boot in Safe Mode"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootSafe",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootSafe\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootNormal",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Boot in Normal Mode"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootNormal",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootNormal\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Restart",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Restart"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Restart",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "shell32.dll,-239"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Restart\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "shutdown.exe /r /t 0"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Shutdown",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Shutdown"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Shutdown",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "shell32.dll,-216"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Shutdown\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "shutdown.exe /s /t 0"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Sleep",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Sleep"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Sleep",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "powrprof.dll,-100"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Sleep\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\LogOff",
-      "name": "MUIVerb",
-      "type": "REG_SZ",
-      "value": "Log Off"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\LogOff",
-      "name": "Icon",
-      "type": "REG_SZ",
-      "value": "shell32.dll,-325"
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\LogOff\\command",
-      "name": "(default)",
-      "type": "REG_SZ",
-      "value": "shutdown.exe /l"
-    },
-    {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
       "name": "SubCommands",
       "type": "REG_SZ",
@@ -845,6 +721,120 @@ $script:ProfileJson = @'
       "name": "SubCommands",
       "type": "REG_SZ",
       "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Safe Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe",
+      "name": "CommandFlags",
+      "type": "REG_DWORD",
+      "value": "0x00000020"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z11_BootNormal",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Normal Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z11_BootNormal",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-5323"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z11_BootNormal\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z12_Restart",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Restart"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z12_Restart",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-239"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z12_Restart\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /r /t 0"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z13_Shutdown",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Shutdown"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z13_Shutdown",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-216"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z13_Shutdown\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /s /t 0"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z14_Sleep",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Sleep"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z14_Sleep",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "powrprof.dll,-100"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z14_Sleep\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z15_LogOff",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Log Off"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z15_LogOff",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-325"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z15_LogOff\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /l"
     }
   ],
   "registry_verify": [
@@ -924,26 +914,6 @@ $script:ProfileJson = @'
       "expected": "Windows"
     },
     {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootSafe\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootNormal\\command",
-      "name": "(default)",
-      "expected": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\Sleep\\command",
-      "name": "(default)",
-      "expected": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
-    },
-    {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
       "name": "SubCommands",
       "expected": ""
@@ -967,6 +937,21 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
       "name": "SubCommands",
       "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z11_BootNormal\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z14_Sleep\\command",
+      "name": "(default)",
+      "expected": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
     }
   ],
   "wrapper_patches": [

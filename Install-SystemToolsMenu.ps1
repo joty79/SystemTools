@@ -152,16 +152,13 @@ function Add-KillAll([string]$BaseKey) {
 }
 
 function Add-SafeMode([string]$BaseKey) {
-    $safeModeGroup = "$BaseKey\shell\Windows\shell\SafeModeOptions"
-    Add-Value -Key $safeModeGroup -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Power Options'
-    Add-Value -Key $safeModeGroup -Name 'SubCommands' -Type 'REG_SZ' -Data ''
-    Add-Value -Key $safeModeGroup -Name 'Icon' -Type 'REG_SZ' -Data 'shell32.dll,-216'
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`""
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootNormal" -Label 'Boot in Normal Mode' -Icon 'imageres.dll,-5323' -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\Restart" -Label 'Restart' -Icon 'shell32.dll,-239' -Command 'shutdown.exe /r /t 0'
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\Shutdown" -Label 'Shutdown' -Icon 'shell32.dll,-216' -Command 'shutdown.exe /s /t 0'
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\Sleep" -Label 'Sleep' -Icon 'powrprof.dll,-100' -Command 'powershell.exe -NoProfile -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState(''Suspend'',$false,$false)"'
-    Add-ToolMenu -ToolKey "$safeModeGroup\shell\LogOff" -Label 'Log Off' -Icon 'shell32.dll,-325' -Command 'shutdown.exe /l'
+    $windowsShell = "$BaseKey\shell\Windows\shell"
+    Add-ToolMenu -ToolKey "$windowsShell\z10_BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`"" -CommandFlags '0x00000020'
+    Add-ToolMenu -ToolKey "$windowsShell\z11_BootNormal" -Label 'Boot in Normal Mode' -Icon 'imageres.dll,-5323' -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
+    Add-ToolMenu -ToolKey "$windowsShell\z12_Restart" -Label 'Restart' -Icon 'shell32.dll,-239' -Command 'shutdown.exe /r /t 0'
+    Add-ToolMenu -ToolKey "$windowsShell\z13_Shutdown" -Label 'Shutdown' -Icon 'shell32.dll,-216' -Command 'shutdown.exe /s /t 0'
+    Add-ToolMenu -ToolKey "$windowsShell\z14_Sleep" -Label 'Sleep' -Icon 'powrprof.dll,-100' -Command 'powershell.exe -NoProfile -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState(''Suspend'',$false,$false)"'
+    Add-ToolMenu -ToolKey "$windowsShell\z15_LogOff" -Label 'Log Off' -Icon 'shell32.dll,-325' -Command 'shutdown.exe /l'
 }
 
 function Install-Menu {

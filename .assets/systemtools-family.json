@@ -13,7 +13,7 @@
       "verify_registry_keys": [
         "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager",
         "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
-        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions\\shell\\BootSafe"
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z10_BootSafe"
       ]
     },
     {
