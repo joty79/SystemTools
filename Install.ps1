@@ -53,7 +53,19 @@ $script:ProfileJson = @'
     ".assets\\icons\\Clear-IconCache.ico",
     ".assets\\systemtools-family.json",
     "SystemToolsManager.ps1",
-    "Launch-SystemToolsManager.vbs"
+    "Launch-SystemToolsManager.vbs",
+    "Launch-FirewallMenu.vbs",
+    "KillAll.ps1",
+    "KillAll_Silent.vbs",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs",
+    ".assets\\\\icons\\\\explorer.ico",
+    ".assets\\\\icons\\\\windows.ico",
+    ".assets\\\\icons\\\\killall.ico",
+    ".assets\\\\icons\\\\safemode.ico",
+    ".assets\\\\icons\\\\firewall.ico"
   ],
   "deploy_entries": [
     "app-metadata.json",
@@ -71,7 +83,14 @@ $script:ProfileJson = @'
     "Launch-ClearIconCache.vbs",
     ".assets",
     "SystemToolsManager.ps1",
-    "Launch-SystemToolsManager.vbs"
+    "Launch-SystemToolsManager.vbs",
+    "Launch-FirewallMenu.vbs",
+    "KillAll.ps1",
+    "KillAll_Silent.vbs",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs"
   ],
   "preserve_existing_entries": null,
   "verify_core_files": [
@@ -94,7 +113,19 @@ $script:ProfileJson = @'
     ".assets\\icons\\Clear-IconCache.ico",
     ".assets\\systemtools-family.json",
     "SystemToolsManager.ps1",
-    "Launch-SystemToolsManager.vbs"
+    "Launch-SystemToolsManager.vbs",
+    "Launch-FirewallMenu.vbs",
+    "KillAll.ps1",
+    "KillAll_Silent.vbs",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs",
+    ".assets\\\\icons\\\\explorer.ico",
+    ".assets\\\\icons\\\\windows.ico",
+    ".assets\\\\icons\\\\killall.ico",
+    ".assets\\\\icons\\\\safemode.ico",
+    ".assets\\\\icons\\\\firewall.ico"
   ],
   "migration_copy_entries": [
     "logs",
