@@ -136,16 +136,6 @@ function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
     Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
 }
 
-function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
-    $windowsKey = "$BaseKey\shell\Windows\shell\FirewallRules"
-    if ([string]::IsNullOrWhiteSpace($TargetToken)) {
-        # Desktop/Background with no specific target: open manager only
-        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`""
-    } else {
-        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`" `"$TargetToken`""
-    }
-}
-
 function Add-KillAll([string]$BaseKey) {
     $explorerKey = "$BaseKey\shell\Explorer\shell\KillAll"
     Add-ToolMenu -ToolKey $explorerKey -Label 'Kill All Windows' -Icon "$iconsDir\killall.ico" -Command "wscript.exe `"$scriptRoot\KillAll_Silent.vbs`""
@@ -167,7 +157,6 @@ function Install-Menu {
     # File context (*)
     Add-RootMenu -BaseKey $fileBaseKey
     Add-WindowsGroup -BaseKey $fileBaseKey
-    Add-FirewallRules -BaseKey $fileBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $fileBaseKey
 
     # Folder context (Directory)
@@ -177,7 +166,6 @@ function Install-Menu {
     Add-KillAll -BaseKey $directoryBaseKey
     Add-WindowsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
-    Add-FirewallRules -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $directoryBaseKey
 
     # Background context (inside folders)
@@ -187,7 +175,6 @@ function Install-Menu {
     Add-KillAll -BaseKey $backgroundBaseKey
     Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
-    Add-FirewallRules -BaseKey $backgroundBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $backgroundBaseKey
 
     # Desktop context
@@ -196,7 +183,6 @@ function Install-Menu {
     Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
     Add-KillAll -BaseKey $desktopBaseKey
     Add-WindowsGroup -BaseKey $desktopBaseKey
-    Add-FirewallRules -BaseKey $desktopBaseKey -TargetToken ''
     Add-SafeMode -BaseKey $desktopBaseKey
     Add-ToolManager -BaseKey $desktopBaseKey
 

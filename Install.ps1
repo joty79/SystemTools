@@ -221,7 +221,15 @@ $script:ProfileJson = @'
     "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\SafeModeOptions",
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\SafeModeOptions",
     "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
-    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions"
+    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\SafeModeOptions",
+    "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCR\\*\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCR\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCR\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules",
+    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules"
   ],
   "registry_values": [
     {
@@ -258,7 +266,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-102"
+      "value": "{InstallRoot}\\.assets\\icons\\explorer.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
@@ -324,7 +332,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
@@ -366,7 +374,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-102"
+      "value": "{InstallRoot}\\.assets\\icons\\explorer.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
@@ -432,7 +440,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
@@ -480,7 +488,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-102"
+      "value": "{InstallRoot}\\.assets\\icons\\explorer.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer\\shell\\RefreshShell",
@@ -546,7 +554,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\z_ToolManager",
@@ -654,7 +662,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "imageres.dll,-5323"
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
