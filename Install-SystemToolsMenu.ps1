@@ -152,8 +152,8 @@ function Add-KillAll([string]$BaseKey) {
 }
 
 function Add-SafeMode([string]$BaseKey) {
-    $safeModeGroup = "$BaseKey\shell\SafeMode"
-    Add-GroupMenu -BaseKey $BaseKey -KeyName 'SafeMode' -Label 'Safe Mode / Power' -Icon "$iconsDir\safemode.ico"
+    $safeModeGroup = "$BaseKey\shell\SafeModeMenu"
+    Add-GroupMenu -BaseKey $BaseKey -KeyName 'SafeModeMenu' -Label 'Safe Mode / Power' -Icon "$iconsDir\safemode.ico"
     Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`""
     Add-ToolMenu -ToolKey "$safeModeGroup\shell\BootNormal" -Label 'Boot in Normal Mode' -Icon 'imageres.dll,-5323' -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
     Add-ToolMenu -ToolKey "$safeModeGroup\shell\Restart" -Label 'Restart' -Icon 'shell32.dll,-239' -Command 'shutdown.exe /r /t 0'
