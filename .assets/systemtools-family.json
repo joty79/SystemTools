@@ -12,7 +12,8 @@
       "order": 10,
       "verify_registry_keys": [
         "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager",
-        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager"
+        "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootSafe"
       ]
     },
     {

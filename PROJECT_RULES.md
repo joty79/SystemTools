@@ -503,3 +503,12 @@
 - Guardrail/rule: When changing wildcard file context-menu behavior, use exact/literal branch checks. `*\shell\SystemTools` gets only `Windows` + `z_ToolManager`; `Directory`, `Directory\Background`, and `DesktopBackground` keep `Explorer`, `Windows`, and `z_ToolManager`.
 - Files affected: `Install.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
 - Validation/tests run: Parser validation passed; local-source update completed; `reg.exe` readback confirmed file/folder/background/desktop/exe surface children and representative child keys; manager `VerifyMenu` passed.
+
+### Entry - 2026-05-14 (SafeMode belongs in generated host profile)
+
+- Date: 2026-05-14
+- Problem: `Power Options` / Safe Mode could appear after a hand-run menu script but was not reliably produced by the generated `Install.ps1` / InstallerCore profile path.
+- Root cause: `Install-SystemToolsMenu.ps1` had `Add-SafeMode`, while `InstallerCore\profiles\SystemTools.json` and the generated installer registry values did not model the desktop-background `PowerMenu`.
+- Guardrail/rule: Desktop-background Safe Mode actions belong in the generated `SystemTools` host profile as `HKCU\Software\Classes\DesktopBackground\Shell\SystemTools\shell\PowerMenu`. Keep it a direct desktop-only child of `System Tools`, and include the original SafeMode actions: `Boot in Safe Mode`, `Boot in Normal Mode`, `Restart`, `Shutdown`, `Sleep`, and `Log Off`.
+- Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `.assets\systemtools-family.json`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
+- Validation/tests run: Parser validation passed for touched SystemTools scripts; JSON validation passed for app metadata, family config, and InstallerCore profile; InstallerCore `Sync-InstallerCore.ps1 -VerifyOnly` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` passed; HKCU registry readback confirmed `PowerMenu` with Safe/Normal/Restart/Shutdown/Sleep/Log Off commands.

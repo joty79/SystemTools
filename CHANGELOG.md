@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.13**: Made `Power Options` / Safe Mode part of the generated SystemTools installer profile so desktop-background installs and repairs register `Boot in Safe Mode`, `Boot in Normal Mode`, `Restart`, `Shutdown`, `Sleep`, and `Log Off` under the main `System Tools` menu.
 - **Version 1.0.12**: Restored folder, folder-background, and desktop Explorer groups after the single-file wildcard cleanup, while keeping all single-file targets limited to Windows file tools plus Tool Manager / Updates.
 - **Version 1.0.11**: Fixed single-file context menus so file targets no longer show the `Explorer` submenu, keep only file-safe tools under `Windows`, and leave Firewall as a top-level `.exe` context-menu entry outside `System Tools`.
 - **Version 1.0.10**: Corrected the context-menu layout so `Explorer` stays as the shell-action group, `Apps & Windows` is renamed to `Windows`, `Take Ownership` and `Who is using this?` move under `Windows`, and `Tool Manager / Updates` stays as the final top-level item with a separator.

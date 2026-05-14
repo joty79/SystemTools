@@ -65,7 +65,8 @@ $script:ProfileJson = @'
     ".assets\\\\icons\\\\windows.ico",
     ".assets\\\\icons\\\\killall.ico",
     ".assets\\\\icons\\\\safemode.ico",
-    ".assets\\\\icons\\\\firewall.ico"
+    ".assets\\\\icons\\\\firewall.ico",
+    ".assets\\icons\\safemode.ico"
   ],
   "deploy_entries": [
     "app-metadata.json",
@@ -125,7 +126,8 @@ $script:ProfileJson = @'
     ".assets\\\\icons\\\\windows.ico",
     ".assets\\\\icons\\\\killall.ico",
     ".assets\\\\icons\\\\safemode.ico",
-    ".assets\\\\icons\\\\firewall.ico"
+    ".assets\\\\icons\\\\firewall.ico",
+    ".assets\\icons\\safemode.ico"
   ],
   "migration_copy_entries": [
     "logs",
@@ -212,7 +214,8 @@ $script:ProfileJson = @'
     "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools",
     "HKCR\\exefile\\shell\\SystemTools",
     "HKCU\\Software\\Classes\\exefile\\shell\\SystemTools\\shell\\Windows",
-    "HKCR\\exefile\\shell\\SystemTools\\shell\\Windows"
+    "HKCR\\exefile\\shell\\SystemTools\\shell\\Windows",
+    "HKCR\\DesktopBackground\\Shell\\SafeMode"
   ],
   "registry_values": [
     {
@@ -221,7 +224,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
       "name": "Icon",
@@ -234,7 +236,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
       "name": "Icon",
@@ -247,7 +248,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -314,7 +314,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -345,7 +344,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
       "name": "Icon",
@@ -358,7 +356,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -425,7 +422,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -456,7 +452,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
       "name": "Icon",
@@ -475,7 +470,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -542,7 +536,6 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -651,20 +644,206 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
       "type": "REG_SZ",
       "value": "imageres.dll,-5323"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Power Options"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-216"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootSafe",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Safe Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootSafe",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootSafe\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootNormal",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Normal Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootNormal",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "imageres.dll,-5323"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootNormal\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Restart",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Restart"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Restart",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-239"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Restart\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /r /t 0"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Shutdown",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Shutdown"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Shutdown",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-216"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Shutdown\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /s /t 0"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Sleep",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Sleep"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Sleep",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "powrprof.dll,-100"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Sleep\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\LogOff",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Log Off"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\LogOff",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "shell32.dll,-325"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\LogOff\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "shutdown.exe /l"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
     }
   ],
   "registry_verify": [
-    
-    
-    
-    
-    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "MUIVerb",
@@ -739,6 +918,51 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
       "name": "MUIVerb",
       "expected": "Windows"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu",
+      "name": "SubCommands",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootSafe\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\BootNormal\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\PowerMenu\\shell\\Sleep\\command",
+      "name": "(default)",
+      "expected": "powershell.exe -NoProfile -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend',$false,$false)\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
+      "name": "SubCommands",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
+      "name": "SubCommands",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
+      "name": "SubCommands",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
+      "name": "SubCommands",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
+      "name": "SubCommands",
+      "expected": ""
     }
   ],
   "wrapper_patches": [
@@ -1567,10 +1791,6 @@ function RunInstallOrUpdate([ValidateSet('Install', 'Update')] [string]$Mode) {
     PatchWrappers -InstallRoot $InstallPath
     $coreOk = VerifyCore -InstallRoot $InstallPath
     WriteRegistry -InstallRoot $InstallPath
-    $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
-    if (Test-Path -LiteralPath $customInstaller) {
-        & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install | Out-Null
-    }
     $regOk = VerifyRegistry -InstallRoot $InstallPath
     SetUninstall -InstallRoot $InstallPath
     SaveMeta -InstallRoot $InstallPath -Mode $Mode
@@ -1590,10 +1810,6 @@ function RunRegistryRepair {
 
     try {
         WriteRegistry -InstallRoot $InstallPath
-        $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
-        if (Test-Path -LiteralPath $customInstaller) {
-            & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install | Out-Null
-        }
         $regOk = VerifyRegistry -InstallRoot $InstallPath
         if ($script:RegistryCleanupNeedsElevation -and (Test-IsElevated)) {
             Log 'Some protected registry cleanup keys still could not be removed even after elevation.' 'WARN'

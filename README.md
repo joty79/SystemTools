@@ -23,6 +23,7 @@
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
 | 🧹 | **[Clear Icon Cache](#-clear-icon-cache)** | Rebuild icon, thumbnail, and UWP AppIconCache — fixes broken Start Menu icons |
+| ⏻ | **Power Options** | Desktop-background Safe Mode, restart, shutdown, sleep, and logoff actions |
 
 ---
 
@@ -42,6 +43,13 @@ System Tools
 │   ├── Who is using this?
 │   ├── WinAppManager
 │   └── Windows Update Cleanup (folder/desktop background)
+├── Power Options (desktop background)
+│   ├── Boot in Safe Mode
+│   ├── Boot in Normal Mode
+│   ├── Restart
+│   ├── Shutdown
+│   ├── Sleep
+│   └── Log Off
 └── Tool Manager / Updates
 ```
 
