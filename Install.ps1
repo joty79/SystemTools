@@ -1642,6 +1642,10 @@ function RunInstallOrUpdate([ValidateSet('Install', 'Update')] [string]$Mode) {
     PatchWrappers -InstallRoot $InstallPath
     $coreOk = VerifyCore -InstallRoot $InstallPath
     WriteRegistry -InstallRoot $InstallPath
+    $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
+    if (Test-Path -LiteralPath $customInstaller) {
+        & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install
+    }
     $regOk = VerifyRegistry -InstallRoot $InstallPath
     SetUninstall -InstallRoot $InstallPath
     SaveMeta -InstallRoot $InstallPath -Mode $Mode
@@ -1661,6 +1665,10 @@ function RunRegistryRepair {
 
     try {
         WriteRegistry -InstallRoot $InstallPath
+        $customInstaller = Join-Path $InstallPath 'Install-SystemToolsMenu.ps1'
+        if (Test-Path -LiteralPath $customInstaller) {
+            & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $customInstaller -Action Install
+        }
         $regOk = VerifyRegistry -InstallRoot $InstallPath
         if ($script:RegistryCleanupNeedsElevation -and (Test-IsElevated)) {
             Log 'Some protected registry cleanup keys still could not be removed even after elevation.' 'WARN'
