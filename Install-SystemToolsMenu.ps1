@@ -91,7 +91,7 @@ function Remove-Key([string]$Key) {
 
 function Add-RootMenu([string]$BaseKey, [switch]$Desktop) {
     Add-Value -Key $BaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
-    Add-Value -Key $BaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+
     Add-Value -Key $BaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
     if ($Desktop) { Add-Value -Key $BaseKey -Name 'Position' -Type 'REG_SZ' -Data 'Bottom' }
 }
@@ -99,7 +99,7 @@ function Add-RootMenu([string]$BaseKey, [switch]$Desktop) {
 function Add-GroupMenu([string]$BaseKey, [string]$KeyName, [string]$Label, [string]$Icon) {
     $groupKey = "$BaseKey\shell\$KeyName"
     Add-Value -Key $groupKey -Name 'MUIVerb' -Type 'REG_SZ' -Data $Label
-    Add-Value -Key $groupKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+
     Add-Value -Key $groupKey -Name 'Icon' -Type 'REG_SZ' -Data $Icon
 }
 

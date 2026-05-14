@@ -221,12 +221,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
       "name": "Icon",
@@ -239,12 +234,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
       "name": "Icon",
@@ -257,12 +247,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -329,12 +314,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -365,12 +345,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
       "name": "Icon",
@@ -383,12 +358,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -455,12 +425,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -491,12 +456,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "System Tools"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
       "name": "Icon",
@@ -515,12 +475,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Explorer"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Explorer",
       "name": "Icon",
@@ -587,12 +542,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -701,12 +651,7 @@ $script:ProfileJson = @'
       "type": "REG_SZ",
       "value": "Windows"
     },
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
-      "name": "SubCommands",
-      "type": "REG_SZ",
-      "value": ""
-    },
+    
     {
       "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows",
       "name": "Icon",
@@ -715,31 +660,11 @@ $script:ProfileJson = @'
     }
   ],
   "registry_verify": [
-    {
-      "key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
-      "name": "SubCommands",
-      "expected": ""
-    },
-    {
-      "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Explorer",
-      "name": "SubCommands",
-      "expected": ""
-    },
+    
+    
+    
+    
+    
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
       "name": "MUIVerb",
