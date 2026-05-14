@@ -91,7 +91,7 @@ function Remove-Key([string]$Key) {
 
 function Add-RootMenu([string]$BaseKey, [switch]$Desktop) {
     Add-Value -Key $BaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'System Tools'
-    Add-Value -Key $BaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $BaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data 'Explorer;PowerMenu;Windows;z_ToolManager'
     Add-Value -Key $BaseKey -Name 'Icon' -Type 'REG_SZ' -Data 'imageres.dll,-109'
     if ($Desktop) { Add-Value -Key $BaseKey -Name 'Position' -Type 'REG_SZ' -Data 'Bottom' }
 }
