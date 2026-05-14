@@ -175,6 +175,7 @@ function Install-Menu {
     Add-KillAll -BaseKey $backgroundBaseKey
     Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
+    Add-SafeMode -BaseKey $backgroundBaseKey
     Add-ToolManager -BaseKey $backgroundBaseKey
 
     # Desktop context

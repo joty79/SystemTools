@@ -521,3 +521,12 @@
 - Guardrail/rule: Desktop background `System Tools > Windows` must stay lean: keep desktop-appropriate entries only (`SystemCleanup`, `WinAppManager`, SafeMode/power actions). Do not register `TakeOwnership`, `WhoIsUsingThis`, or `FirewallRules` there. Keep `Explorer` and `Windows` category icons on repo-owned `.assets\icons\explorer.ico` and `.assets\icons\windows.ico`.
 - Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, child `TakeOwnership` / `WhoIsUsingThis` generated installers, and `InstallerCore` profiles.
 - Validation/tests run: Parser/profile validation passed; local-source updates completed for `SystemTools`, `TakeOwnership`, and `WhoIsUsingThis`; registry readback confirmed desktop-background `TakeOwnership`, `WhoIsUsingThis`, and `FirewallRules` keys are absent, category icons use installed `.ico` files, and SafeMode flat entries exist.
+
+### Entry - 2026-05-14 (Desktop right-click uses Directory Background)
+
+- Date: 2026-05-14
+- Problem: The visible desktop right-click `System Tools > Windows` menu still showed `Take Ownership` / `Who is using this?` and did not show SafeMode/power entries even after the `DesktopBackground` branch was fixed.
+- Root cause: On this host the visible desktop right-click path is `HKCU\Software\Classes\Directory\Background\shell\SystemTools`, while the earlier fix only pruned and populated `DesktopBackground\Shell\SystemTools`.
+- Guardrail/rule: For desktop-visible menu fixes, validate both `Directory\Background` and `DesktopBackground`. SafeMode/power entries must exist under `Directory\Background\shell\SystemTools\shell\Windows\shell\z10_BootSafe` through `z15_LogOff`, and `TakeOwnership` / `WhoIsUsingThis` must not register there.
+- Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`, child `TakeOwnership` / `WhoIsUsingThis` generated installers, and `InstallerCore` profiles.
+- Validation/tests run: Parser/profile validation passed; local-source updates completed for `SystemTools`, `TakeOwnership`, and `WhoIsUsingThis`; registry readback confirmed `Directory\Background` has SafeMode/power entries and no `TakeOwnership` / `WhoIsUsingThis`; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` passed; Explorer restarted with execution-policy bypass.
