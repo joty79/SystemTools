@@ -58,7 +58,7 @@ function New-DefaultFamilyConfig {
             [pscustomobject]@{ name = 'WhoIsUsingThis'; label = 'Who is using this?'; repo = 'joty79/WhoIsUsingThis'; branch = 'master'; install_folder = 'WhoIsUsingThisContext'; repo_folder = 'WhoIsUsingThis'; role = 'child'; order = 30; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\WhoIsUsingThis') },
             [pscustomobject]@{ name = 'WinAppManager'; label = 'WinAppManager'; repo = 'joty79/WinAppManager'; branch = 'master'; install_folder = 'WinAppManager'; repo_folder = 'WinAppManager'; role = 'child'; order = 40; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows\shell\WinAppManager') },
             [pscustomobject]@{ name = 'SystemCleanup'; label = 'Windows Update Cleanup'; repo = 'joty79/SystemCleanup'; branch = 'master'; install_folder = 'SystemCleanupContext'; repo_folder = 'SystemCleanup'; role = 'child'; order = 50; verify_registry_keys = @('HKCU\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows\shell\SystemCleanup') },
-            [pscustomobject]@{ name = 'Firewall'; label = 'Firewall Rules'; repo = 'joty79/Firewall'; branch = 'master'; install_folder = 'FirewallContext'; repo_folder = 'Firewall'; role = 'child'; order = 60; verify_registry_keys = @('HKCU\Software\Classes\exefile\shell\SystemTools\shell\AppsWindows\shell\FirewallManager') }
+            [pscustomobject]@{ name = 'Firewall'; label = 'Firewall Rules'; repo = 'joty79/Firewall'; branch = 'master'; install_folder = 'FirewallContext'; repo_folder = 'Firewall'; role = 'child'; order = 60; verify_registry_keys = @('HKCU\Software\Classes\*\shell\SystemTools\shell\Windows\shell\FirewallRules') }
         )
     }
 }
