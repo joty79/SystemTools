@@ -6,4 +6,6 @@ Env-Readable-*.md
 __toggle_test/
 env/
 state/
+scratch/
 scratch_*.ps1
+
