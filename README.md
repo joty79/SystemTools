@@ -23,7 +23,7 @@
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
 | 🧹 | **[Clear Icon Cache](#-clear-icon-cache)** | Rebuild icon, thumbnail, and UWP AppIconCache — fixes broken Start Menu icons |
-| ⏻ | **Power Options** | Desktop-background Safe Mode, restart, shutdown, sleep, and logoff actions |
+| 🧩 | **Shared Windows Tools** | Firewall rules, PATH Manager, cleanup, ownership, lock-checking, and app management entries |
 
 ---
 
@@ -38,23 +38,18 @@ System Tools
 │   ├── Restart Explorer
 │   └── Clear Icon Cache
 ├── Windows
+│   ├── Firewall Rules
 │   ├── Manage Folder PATH...
+│   ├── Windows Update Cleanup
 │   ├── Take Ownership
 │   ├── Who is using this?
-│   ├── WinAppManager
-│   ├── Windows Update Cleanup (folder/desktop background)
-│   ├── Boot in Safe Mode (desktop background)
-│   ├── Boot in Normal Mode (desktop background)
-│   ├── Restart (desktop background)
-│   ├── Shutdown (desktop background)
-│   ├── Sleep (desktop background)
-│   └── Log Off (desktop background)
+│   └── WinAppManager
 └── Tool Manager / Updates
 ```
 
 On single-file targets such as `.md`, `System Tools > Windows` is intentionally limited to file-safe tools: `Take Ownership` and `Who is using this?`.
-On folder-background and desktop-background targets, `System Tools > Windows` omits `Take Ownership` and `Who is using this?` so the Safe Mode / power actions stay visible under the Windows 10 static-menu limit.
-Firewall rules are not nested under `System Tools`; `.exe` files keep their own top-level `Firewall Rules` entry.
+Safe Mode / power actions are intentionally not part of `SystemTools` while this registry-based menu stays under the Windows 10 static cascade limit.
+`.exe` files can still keep their own top-level `Firewall Rules` entry outside `System Tools`.
 
 Planned additions such as `Make Symlink / Junction` can be added later under `Windows` without merging every tool into one giant repo.
 

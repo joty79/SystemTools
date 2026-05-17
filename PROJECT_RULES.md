@@ -540,3 +540,12 @@
 - Evidence: 10 independent dummy tests (T1–T10) across 6 architectures with 100% consistency. Full documentation: `docs/AG_CASCADE_LIMIT_TESTS.md`, `docs/STATIC_CASCADE_DUMMY_TESTS.md`, `docs/EXTENDED_SUBCOMMANDSKEY_DUMMY_TESTS.md`.
 - Files affected: `docs/AG_CASCADE_LIMIT_TESTS.md` (NEW), `GEMINI.md` (rule 54 added), `PROJECT_RULES.md`.
 - Validation/tests run: All 10 dummy tests confirmed by user visual inspection; all dummy registry keys cleaned up after testing (HKCU `z_AgDummyT1`–`z_AgDummyT10`, `AgDummy` tree, HKLM `CommandStore\shell\AgDummy.Item01`–`AgDummy.Item20`).
+
+### Entry - 2026-05-17 (Restore stable SystemTools layout; SafeMode separate)
+
+- Date: 2026-05-17
+- Problem: Folding SafeMode/power actions into `System Tools > Windows` made the registry cascade fragile and caused repeated menu truncation/confusion while testing the 16-entry Explorer limit.
+- Root cause: `SystemTools`, SafeMode/power actions, and child tool installers were all competing for the same static registry cascade level. Even after proving the per-level limit, keeping SafeMode inside the shared Windows submenu left the menu too close to the failure mode.
+- Guardrail/rule: Keep the registry-based `SystemTools` layout stable and small: root `Explorer`, `Windows`, and `Tool Manager / Updates`; `Explorer` owns `Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`; `Windows` owns `Firewall Rules`, `Manage Folder PATH...`, `Windows Update Cleanup`, `Take Ownership`, `Who is using this?`, and `WinAppManager`. Do not put SafeMode/power actions back inside `SystemTools`; build them as a separate menu until a COM/DLL implementation exists.
+- Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, and related `InstallerCore` / child-tool profiles.
+- Validation/tests run: Parser validation passed for generated installers; local-source updates completed for `SystemTools`, `TakeOwnership`, and `WhoIsUsingThis`; HKCU readback confirmed both `Directory\Background` and `DesktopBackground` Windows submenus contain the six expected entries and no `z10_BootSafe` through `z15_LogOff` leftovers.

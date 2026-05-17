@@ -46,17 +46,13 @@ $requiredFiles = @(
     'Clear-IconCache.ps1',
     'SystemToolsManager.ps1',
     'KillAll.ps1',
-    'SafeMode.ps1',
-    'NormalMode.ps1',
     'Launch-SystemToolsMenu.vbs',
     'Launch-RestartExplorer.vbs',
     'Launch-RefreshShell.vbs',
     'Launch-ClearIconCache.vbs',
     'Launch-SystemToolsManager.vbs',
     'Launch-FirewallMenu.vbs',
-    'KillAll_Silent.vbs',
-    'Launch-SafeMode.vbs',
-    'Launch-NormalMode.vbs'
+    'KillAll_Silent.vbs'
 )
 
 foreach ($file in $requiredFiles) {
@@ -136,19 +132,18 @@ function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
     Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
 }
 
+function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
+    $windowsKey = "$BaseKey\shell\Windows\shell\FirewallRules"
+    if ([string]::IsNullOrWhiteSpace($TargetToken)) {
+        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`""
+    } else {
+        Add-ToolMenu -ToolKey $windowsKey -Label 'Firewall Rules' -Icon "$iconsDir\firewall.ico" -Command "wscript.exe `"$scriptRoot\Launch-FirewallMenu.vbs`" `"$TargetToken`""
+    }
+}
+
 function Add-KillAll([string]$BaseKey) {
     $explorerKey = "$BaseKey\shell\Explorer\shell\KillAll"
     Add-ToolMenu -ToolKey $explorerKey -Label 'Kill All Windows' -Icon "$iconsDir\killall.ico" -Command "wscript.exe `"$scriptRoot\KillAll_Silent.vbs`""
-}
-
-function Add-SafeMode([string]$BaseKey) {
-    $windowsShell = "$BaseKey\shell\Windows\shell"
-    Add-ToolMenu -ToolKey "$windowsShell\z10_BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`"" -CommandFlags '0x00000020'
-    Add-ToolMenu -ToolKey "$windowsShell\z11_BootNormal" -Label 'Boot in Normal Mode' -Icon 'imageres.dll,-5323' -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
-    Add-ToolMenu -ToolKey "$windowsShell\z12_Restart" -Label 'Restart' -Icon 'shell32.dll,-239' -Command 'shutdown.exe /r /t 0'
-    Add-ToolMenu -ToolKey "$windowsShell\z13_Shutdown" -Label 'Shutdown' -Icon 'shell32.dll,-216' -Command 'shutdown.exe /s /t 0'
-    Add-ToolMenu -ToolKey "$windowsShell\z14_Sleep" -Label 'Sleep' -Icon 'powrprof.dll,-100' -Command 'powershell.exe -NoProfile -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState(''Suspend'',$false,$false)"'
-    Add-ToolMenu -ToolKey "$windowsShell\z15_LogOff" -Label 'Log Off' -Icon 'shell32.dll,-325' -Command 'shutdown.exe /l'
 }
 
 function Install-Menu {
@@ -157,6 +152,7 @@ function Install-Menu {
     # File context (*)
     Add-RootMenu -BaseKey $fileBaseKey
     Add-WindowsGroup -BaseKey $fileBaseKey
+    Add-FirewallRules -BaseKey $fileBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $fileBaseKey
 
     # Folder context (Directory)
@@ -166,6 +162,7 @@ function Install-Menu {
     Add-KillAll -BaseKey $directoryBaseKey
     Add-WindowsGroup -BaseKey $directoryBaseKey
     Add-PathManager -BaseKey $directoryBaseKey -TargetToken '%1'
+    Add-FirewallRules -BaseKey $directoryBaseKey -TargetToken '%1'
     Add-ToolManager -BaseKey $directoryBaseKey
 
     # Background context (inside folders)
@@ -175,7 +172,7 @@ function Install-Menu {
     Add-KillAll -BaseKey $backgroundBaseKey
     Add-WindowsGroup -BaseKey $backgroundBaseKey
     Add-PathManager -BaseKey $backgroundBaseKey -TargetToken '%V'
-    Add-SafeMode -BaseKey $backgroundBaseKey
+    Add-FirewallRules -BaseKey $backgroundBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $backgroundBaseKey
 
     # Desktop context
@@ -184,7 +181,8 @@ function Install-Menu {
     Add-ExplorerTools -BaseKey $desktopBaseKey -TargetToken '%V'
     Add-KillAll -BaseKey $desktopBaseKey
     Add-WindowsGroup -BaseKey $desktopBaseKey
-    Add-SafeMode -BaseKey $desktopBaseKey
+    Add-PathManager -BaseKey $desktopBaseKey -TargetToken '%V'
+    Add-FirewallRules -BaseKey $desktopBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $desktopBaseKey
 
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
