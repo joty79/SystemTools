@@ -60,7 +60,13 @@ $script:ProfileJson = @'
     ".assets\\\\icons\\\\explorer.ico",
     ".assets\\\\icons\\\\windows.ico",
     ".assets\\\\icons\\\\killall.ico",
-    ".assets\\\\icons\\\\firewall.ico"
+    ".assets\\\\icons\\\\firewall.ico",
+    ".assets\\icons\\managefolderpath.ico",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs",
+    ".assets\\icons\\safemode.ico"
   ],
   "deploy_entries": [
     "app-metadata.json",
@@ -81,7 +87,13 @@ $script:ProfileJson = @'
     "Launch-SystemToolsManager.vbs",
     "Launch-FirewallMenu.vbs",
     "KillAll.ps1",
-    "KillAll_Silent.vbs"
+    "KillAll_Silent.vbs",
+    ".assets\\icons\\managefolderpath.ico",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs",
+    ".assets\\icons\\safemode.ico"
   ],
   "preserve_existing_entries": null,
   "verify_core_files": [
@@ -111,7 +123,13 @@ $script:ProfileJson = @'
     ".assets\\\\icons\\\\explorer.ico",
     ".assets\\\\icons\\\\windows.ico",
     ".assets\\\\icons\\\\killall.ico",
-    ".assets\\\\icons\\\\firewall.ico"
+    ".assets\\\\icons\\\\firewall.ico",
+    ".assets\\icons\\managefolderpath.ico",
+    "SafeMode.ps1",
+    "NormalMode.ps1",
+    "Launch-SafeMode.vbs",
+    "Launch-NormalMode.vbs",
+    ".assets\\icons\\safemode.ico"
   ],
   "migration_copy_entries": [
     "logs",
@@ -250,7 +268,11 @@ $script:ProfileJson = @'
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z12_Restart",
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z13_Shutdown",
     "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z14_Sleep",
-    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z15_LogOff"
+    "HKCR\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\z15_LogOff",
+    "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+    "HKCR\\Directory\\Background\\shell\\SafeModeOptions",
+    "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+    "HKCR\\DesktopBackground\\Shell\\SafeModeOptions"
   ],
   "registry_values": [
     {
@@ -365,7 +387,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\folder_to_path.ico"
+      "value": "{InstallRoot}\\.assets\\icons\\managefolderpath.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
@@ -473,7 +495,7 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\folder_to_path.ico"
+      "value": "{InstallRoot}\\.assets\\icons\\managefolderpath.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
@@ -833,13 +855,127 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
       "name": "Icon",
       "type": "REG_SZ",
-      "value": "{InstallRoot}\\.assets\\icons\\folder_to_path.ico"
+      "value": "{InstallRoot}\\.assets\\icons\\managefolderpath.ico"
     },
     {
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
       "name": "(default)",
       "type": "REG_SZ",
       "value": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsMenu.vbs\" \"%V\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Safe Mode Options"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\01_BootNormal",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Normal Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\01_BootNormal",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\02_BootSafe",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Safe Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\02_BootSafe",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Safe Mode Options"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "SubCommands",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "Position",
+      "type": "REG_SZ",
+      "value": "Bottom"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\01_BootNormal",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Normal Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\01_BootNormal",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\windows.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe",
+      "name": "MUIVerb",
+      "type": "REG_SZ",
+      "value": "Boot in Safe Mode"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe",
+      "name": "Icon",
+      "type": "REG_SZ",
+      "value": "{InstallRoot}\\.assets\\icons\\safemode.ico"
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
+      "name": "(default)",
+      "type": "REG_SZ",
+      "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
     }
   ],
   "registry_verify": [
@@ -967,6 +1103,26 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools\\shell\\Windows\\shell\\PathManager\\command",
       "name": "(default)",
       "expected": "wscript.exe \"{InstallRoot}\\Launch-SystemToolsMenu.vbs\" \"%V\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-NormalMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
+      "name": "(default)",
+      "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
     }
   ],
   "wrapper_patches": [

@@ -549,3 +549,12 @@
 - Guardrail/rule: Keep the registry-based `SystemTools` layout stable and small: root `Explorer`, `Windows`, and `Tool Manager / Updates`; `Explorer` owns `Refresh Shell`, `Restart Explorer`, `Clear Icon Cache`; `Windows` owns `Firewall Rules`, `Manage Folder PATH...`, `Windows Update Cleanup`, `Take Ownership`, `Who is using this?`, and `WinAppManager`. Do not put SafeMode/power actions back inside `SystemTools`; build them as a separate menu until a COM/DLL implementation exists.
 - Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `SystemToolsMenu.reg`, `.assets\systemtools-family.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, and related `InstallerCore` / child-tool profiles.
 - Validation/tests run: Parser validation passed for generated installers; local-source updates completed for `SystemTools`, `TakeOwnership`, and `WhoIsUsingThis`; HKCU readback confirmed both `Directory\Background` and `DesktopBackground` Windows submenus contain the six expected entries and no `z10_BootSafe` through `z15_LogOff` leftovers.
+
+### Entry - 2026-05-17 (SafeMode top-level menu and PATH icon)
+
+- Date: 2026-05-17
+- Problem: SafeMode needed to return without consuming the `SystemTools > Windows` cascade budget, and `Manage Folder PATH...` needed the custom icon from `Documents\Icons\managefolderpath.ico`.
+- Root cause: Nesting SafeMode inside `SystemTools` had caused repeated truncation. Reusing the old `folder_to_path.ico` filename also risks Explorer icon-cache stickiness.
+- Guardrail/rule: Keep `Safe Mode Options` as a separate top-level desktop/folder-background cascade with exactly two children: `Boot in Normal Mode` and `Boot in Safe Mode`. Keep `SystemTools` itself at root=3, Explorer=3, Windows=6. Use `.assets\icons\managefolderpath.ico` for `PathManager`.
+- Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `.assets\icons\managefolderpath.ico`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
+- Validation/tests run: Parser validation passed; profile JSON validation passed; local-source update completed; HKCU readback confirmed PathManager icon values, separate SafeMode menu values, SystemTools level counts, and SafeMode child count; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` passed; Explorer restarted.

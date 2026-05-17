@@ -45,10 +45,14 @@ System Tools
 │   ├── Who is using this?
 │   └── WinAppManager
 └── Tool Manager / Updates
+
+Safe Mode Options
+├── Boot in Normal Mode
+└── Boot in Safe Mode
 ```
 
 On single-file targets such as `.md`, `System Tools > Windows` is intentionally limited to file-safe tools: `Take Ownership` and `Who is using this?`.
-Safe Mode / power actions are intentionally not part of `SystemTools` while this registry-based menu stays under the Windows 10 static cascade limit.
+Safe Mode is intentionally a separate top-level context menu while `SystemTools` stays under the Windows 10 static cascade limit.
 `.exe` files can still keep their own top-level `Firewall Rules` entry outside `System Tools`.
 
 Planned additions such as `Make Symlink / Junction` can be added later under `Windows` without merging every tool into one giant repo.

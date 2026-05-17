@@ -12,6 +12,8 @@ $fileBaseKey = 'HKCU\Software\Classes\*\shell\SystemTools'
 $directoryBaseKey = 'HKCU\Software\Classes\Directory\shell\SystemTools'
 $backgroundBaseKey = 'HKCU\Software\Classes\Directory\Background\shell\SystemTools'
 $desktopBaseKey = 'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools'
+$safeModeBackgroundKey = 'HKCU\Software\Classes\Directory\Background\shell\SafeModeOptions'
+$safeModeDesktopKey = 'HKCU\Software\Classes\DesktopBackground\Shell\SafeModeOptions'
 $legacyKeys = @(
     'HKCR\*\shell\SystemTools',
     'HKCU\Software\Classes\*\shell\SystemTools',
@@ -21,6 +23,10 @@ $legacyKeys = @(
     'HKCU\Software\Classes\Directory\Background\shell\SystemTools',
     'HKCR\DesktopBackground\Shell\SystemTools',
     'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools',
+    'HKCR\Directory\Background\shell\SafeModeOptions',
+    'HKCU\Software\Classes\Directory\Background\shell\SafeModeOptions',
+    'HKCR\DesktopBackground\Shell\SafeModeOptions',
+    'HKCU\Software\Classes\DesktopBackground\Shell\SafeModeOptions',
     'HKCR\exefile\shell\SystemTools',
     'HKCU\Software\Classes\exefile\shell\SystemTools',
     # Cleanup old standalone context menu entries
@@ -46,13 +52,17 @@ $requiredFiles = @(
     'Clear-IconCache.ps1',
     'SystemToolsManager.ps1',
     'KillAll.ps1',
+    'SafeMode.ps1',
+    'NormalMode.ps1',
     'Launch-SystemToolsMenu.vbs',
     'Launch-RestartExplorer.vbs',
     'Launch-RefreshShell.vbs',
     'Launch-ClearIconCache.vbs',
     'Launch-SystemToolsManager.vbs',
     'Launch-FirewallMenu.vbs',
-    'KillAll_Silent.vbs'
+    'KillAll_Silent.vbs',
+    'Launch-SafeMode.vbs',
+    'Launch-NormalMode.vbs'
 )
 
 foreach ($file in $requiredFiles) {
@@ -129,7 +139,7 @@ function Add-ToolManager([string]$BaseKey) {
 
 function Add-PathManager([string]$BaseKey, [string]$TargetToken) {
     $windowsKey = "$BaseKey\shell\Windows\shell\PathManager"
-    Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\folder_to_path.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
+    Add-ToolMenu -ToolKey $windowsKey -Label 'Manage Folder PATH...' -Icon "$iconsDir\managefolderpath.ico" -Command "wscript.exe `"$scriptRoot\Launch-SystemToolsMenu.vbs`" `"$TargetToken`""
 }
 
 function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
@@ -144,6 +154,16 @@ function Add-FirewallRules([string]$BaseKey, [string]$TargetToken) {
 function Add-KillAll([string]$BaseKey) {
     $explorerKey = "$BaseKey\shell\Explorer\shell\KillAll"
     Add-ToolMenu -ToolKey $explorerKey -Label 'Kill All Windows' -Icon "$iconsDir\killall.ico" -Command "wscript.exe `"$scriptRoot\KillAll_Silent.vbs`""
+}
+
+function Add-SafeModeMenu([string]$BaseKey, [switch]$Desktop) {
+    Add-Value -Key $BaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Safe Mode Options'
+    Add-Value -Key $BaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
+    Add-Value -Key $BaseKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\safemode.ico"
+    if ($Desktop) { Add-Value -Key $BaseKey -Name 'Position' -Type 'REG_SZ' -Data 'Bottom' }
+
+    Add-ToolMenu -ToolKey "$BaseKey\shell\01_BootNormal" -Label 'Boot in Normal Mode' -Icon "$iconsDir\windows.ico" -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""
+    Add-ToolMenu -ToolKey "$BaseKey\shell\02_BootSafe" -Label 'Boot in Safe Mode' -Icon "$iconsDir\safemode.ico" -Command "wscript.exe `"$scriptRoot\Launch-SafeMode.vbs`""
 }
 
 function Install-Menu {
@@ -184,6 +204,10 @@ function Install-Menu {
     Add-PathManager -BaseKey $desktopBaseKey -TargetToken '%V'
     Add-FirewallRules -BaseKey $desktopBaseKey -TargetToken ''
     Add-ToolManager -BaseKey $desktopBaseKey
+
+    # Separate desktop/folder-background power menu; not nested under System Tools.
+    Add-SafeModeMenu -BaseKey $safeModeBackgroundKey
+    Add-SafeModeMenu -BaseKey $safeModeDesktopKey -Desktop
 
     Write-Host 'System Tools context menu installed.' -ForegroundColor Green
 }
