@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Cascade limit evidence**: Added local research notes for the Windows 10 Explorer static registry cascade 16-entry budget and recorded the rule in project memory.
 - **Version 1.0.15**: Mirrored the SafeMode/power actions to the actual desktop right-click `Directory\Background` branch and removed ownership/lock child entries from that branch so the visible desktop `System Tools > Windows` menu stays under the Windows 10 static-menu limit.
 - **Version 1.0.14**: Restored repo-owned `Explorer` / `Windows` category icons, removed nested `Firewall Rules` from `System Tools`, and kept desktop-background `Windows` under the Windows 10 static-menu item limit by relying on child installers to stop re-adding `Take Ownership` and `Who is using this?` there.
 - **Version 1.0.13**: Made `Power Options` / Safe Mode part of the generated SystemTools installer profile so desktop-background installs and repairs register `Boot in Safe Mode`, `Boot in Normal Mode`, `Restart`, `Shutdown`, `Sleep`, and `Log Off` under the main `System Tools` menu.
