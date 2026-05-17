@@ -558,3 +558,12 @@
 - Guardrail/rule: Keep `Safe Mode Options` as a separate top-level desktop/folder-background cascade with exactly two children: `Boot in Normal Mode` and `Boot in Safe Mode`. Keep `SystemTools` itself at root=3, Explorer=3, Windows=6. Use `.assets\icons\managefolderpath.ico` for `PathManager`.
 - Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `.assets\icons\managefolderpath.ico`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
 - Validation/tests run: Parser validation passed; profile JSON validation passed; local-source update completed; HKCU readback confirmed PathManager icon values, separate SafeMode menu values, SystemTools level counts, and SafeMode child count; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` passed; Explorer restarted.
+
+### Entry - 2026-05-17 (SafeMode is Shift-only)
+
+- Date: 2026-05-17
+- Problem: `Safe Mode Options` should be available but not visible on every normal desktop/folder-background right-click.
+- Root cause: The separate SafeMode root keys lacked the registry `Extended` value.
+- Guardrail/rule: `Safe Mode Options` root keys under `Directory\Background\shell` and `DesktopBackground\Shell` must include empty `Extended` values so they appear only with Shift+right-click.
+- Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
+- Validation/tests run: Parser validation passed; profile JSON validation passed; local-source update completed; HKCU readback confirmed `Extended` on both SafeMode root keys; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` and `InstallerCore` verify passed; Explorer restarted.

@@ -976,6 +976,18 @@ $script:ProfileJson = @'
       "name": "(default)",
       "type": "REG_SZ",
       "value": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+      "name": "Extended",
+      "type": "REG_SZ",
+      "value": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "Extended",
+      "type": "REG_SZ",
+      "value": ""
     }
   ],
   "registry_verify": [
@@ -1123,6 +1135,16 @@ $script:ProfileJson = @'
       "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
       "name": "(default)",
       "expected": "wscript.exe \"{InstallRoot}\\Launch-SafeMode.vbs\""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+      "name": "Extended",
+      "expected": ""
+    },
+    {
+      "key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+      "name": "Extended",
+      "expected": ""
     }
   ],
   "wrapper_patches": [

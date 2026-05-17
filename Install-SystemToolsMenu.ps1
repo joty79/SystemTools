@@ -160,6 +160,7 @@ function Add-SafeModeMenu([string]$BaseKey, [switch]$Desktop) {
     Add-Value -Key $BaseKey -Name 'MUIVerb' -Type 'REG_SZ' -Data 'Safe Mode Options'
     Add-Value -Key $BaseKey -Name 'SubCommands' -Type 'REG_SZ' -Data ''
     Add-Value -Key $BaseKey -Name 'Icon' -Type 'REG_SZ' -Data "$iconsDir\safemode.ico"
+    Add-Value -Key $BaseKey -Name 'Extended' -Type 'REG_SZ' -Data ''
     if ($Desktop) { Add-Value -Key $BaseKey -Name 'Position' -Type 'REG_SZ' -Data 'Bottom' }
 
     Add-ToolMenu -ToolKey "$BaseKey\shell\01_BootNormal" -Label 'Boot in Normal Mode' -Icon "$iconsDir\windows.ico" -Command "wscript.exe `"$scriptRoot\Launch-NormalMode.vbs`""

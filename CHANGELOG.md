@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **SafeMode Shift-only visibility**: `Safe Mode Options` is now registered with the `Extended` value on folder-background and desktop-background roots, so it appears only on Shift+right-click.
 - **Version 1.0.17**: Added `Safe Mode Options` back as a separate top-level desktop/folder-background context menu with only `Boot in Normal Mode` and `Boot in Safe Mode`, and changed `Manage Folder PATH...` to the bundled `managefolderpath.ico` asset.
 - **Version 1.0.16**: Restored the stable pre-SafeMode `System Tools` layout: root `Explorer`, `Windows`, and `Tool Manager / Updates`; `Explorer` has the three shell tools; `Windows` has `Firewall Rules`, `Manage Folder PATH...`, `Windows Update Cleanup`, `Take Ownership`, `Who is using this?`, and `WinAppManager`. SafeMode/power entries are cleaned from `SystemTools` and will remain separate while this menu is registry-based.
 - **Cascade limit evidence**: Added local research notes for the Windows 10 Explorer static registry cascade 16-entry budget and recorded the rule in project memory.
