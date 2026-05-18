@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Dirty-source install guidance should change after source becomes clean)
+
+- Date: 2026-05-18
+- Problem: `SystemTools host` could show `Dirty-source install` while workspace and remote were already clean/current, but the guidance still suggested opening Git review first.
+- Root cause: `Actions Needed` treated every dirty-source install the same, even after the source had been committed/pushed and the only remaining issue was stale dirty-source install metadata.
+- Guardrail/rule: If `Status` is `Dirty-source install` and `WorkState` is exactly `Current`, recommend `U` to refresh from GitHub/latest and clear dirty-source metadata. Keep Git review first only when the workspace is still dirty, different, missing, or otherwise unresolved.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; targeted guidance smoke confirmed `Dirty-source install` + `Current` recommends `Press U to refresh clean install`; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.48`.
+
 ### Entry - 2026-05-18 (Git review pane close hint should be concise and scannable)
 
 - Date: 2026-05-18

@@ -1454,9 +1454,16 @@ function Get-ManagerActionGuidance {
         $color = $_C.Warn
     }
     elseif ($Row.Status -eq 'Dirty-source install') {
-        $recommendation = 'Press Enter to review local source'
-        $reason = 'Installed files came from uncommitted local changes; metadata may not describe the exact files.'
-        $gitNote = 'Enter opens a WT pane. Run git status -sb; git diff --stat; then commit/push or reinstall clean.'
+        if ($Row.WorkState -eq 'Current') {
+            $recommendation = 'Press U to refresh clean install'
+            $reason = 'Installed metadata came from dirty local source, but workspace and remote are now clean/current.'
+            $gitNote = 'U installs GitHub/latest and should clear dirty-source metadata. I reinstalls the clean local checkout.'
+        }
+        else {
+            $recommendation = 'Press Enter to review local source'
+            $reason = 'Installed files came from uncommitted local changes; metadata may not describe the exact files.'
+            $gitNote = 'Enter opens a WT pane. Run git status -sb; git diff --stat; then commit/push or reinstall clean.'
+        }
         $color = $_C.Warn
     }
     elseif ($Row.WorkState -match 'dirty') {
