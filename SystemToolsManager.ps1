@@ -35,6 +35,7 @@ $Script:LastManagerNavigationKey = ''
 $Script:LastManagerNavigationAt = [DateTime]::MinValue
 $Script:LastManagerWindowWidth = 0
 $Script:LastManagerWindowHeight = 0
+$Script:ManagerMenuSnapshot = $null
 
 function Get-BlueprintModulePath {
     $candidates = @(
@@ -1074,6 +1075,7 @@ function Read-ManagerKey {
         Key = $keyName
         KeyChar = $keyChar
         VirtualKeyCode = if ($keyInfo.PSObject.Properties['VirtualKeyCode']) { [int]$keyInfo.VirtualKeyCode } else { $null }
+        ControlKeyState = if ($keyInfo.PSObject.Properties['ControlKeyState']) { [string]$keyInfo.ControlKeyState } else { '' }
     }
 }
 
@@ -1191,6 +1193,25 @@ function Wait-ManagerBackKey {
         if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
         if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) { return }
     }
+}
+
+function Invoke-ManagerExternalAction {
+    param(
+        [Parameter(Mandatory)][scriptblock]$Operation,
+        [switch]$NoPause
+    )
+
+    Restore-TuiHost
+    try {
+        & $Operation
+        if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
+    }
+    finally {
+        Initialize-TuiHost
+    }
+
+    Show-ManagerLoading
+    $Script:ManagerMenuSnapshot = New-ManagerMenuSnapshot
 }
 
 function Get-ManagerRowColor {
@@ -1325,6 +1346,31 @@ function New-ManagerToolsSummaryLine {
     return '  ' + ($cells -join '  ')
 }
 
+function Write-ManagerShortcutFooter {
+    param([Parameter(Mandatory)][int]$Width)
+
+    $wide = $Width -ge 92
+    $actionText = if ($wide) {
+        'U update selected   ^U update all   I install/repair selected   ^I install/repair all   R refresh'
+    }
+    elseif ($Width -ge 64) {
+        'U update   ^U all   I repair   ^I repair all   R refresh'
+    }
+    else {
+        'U upd   ^U all   I rep   ^I all   R ref'
+    }
+
+    $navText = if ($Width -ge 72) {
+        "$([char]0x2191)$([char]0x2193) move   Esc = back"
+    }
+    else {
+        "$([char]0x2191)$([char]0x2193) move   Esc back"
+    }
+
+    Write-Host "  $($_C.Warn)$(Limit-ManagerText -Value $actionText -Width ([Math]::Max(1, $Width - 3)))$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $navText -Width ([Math]::Max(1, $Width - 3)))$($_C.Reset)$($_C.EraseLn)"
+}
+
 function Write-ToolsSummaryBlock {
     param(
         [Parameter(Mandatory)][object[]]$Rows,
@@ -1368,12 +1414,15 @@ function Write-ToolsSummaryBlock {
         'Wide view adds Inst/Work/Remote commit columns.'
     }
     Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $legend -Width ([Math]::Max(1, $size.Width - 3)))$($_C.Reset)$($_C.EraseLn)"
-    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) move    Enter = details    Esc = back$($_C.Reset)$($_C.EraseLn)"
+    Write-ManagerShortcutFooter -Width $size.Width
     Write-Host "$_E[J" -NoNewline
 }
 
 function Show-ToolsSummary {
-    param([Parameter(Mandatory)]$Snapshot)
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [switch]$NoPause
+    )
 
     $rows = @($Snapshot.Rows)
     if ($rows.Count -eq 0) { return }
@@ -1403,12 +1452,52 @@ function Show-ToolsSummary {
 
             Reset-ManagerNavigationRepeat
 
-            if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
+            if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) {
+                $Script:ManagerMenuSnapshot = $Snapshot
+                return
+            }
             if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) {
-                Invoke-ManagerFrame {
-                    Show-ToolInspectionState -State $Snapshot.States[$selected]
-                }
-                Wait-ManagerBackKey
+                continue
+            }
+
+            $charCode = [int][char]$key.KeyChar
+            $char = ([string]$key.KeyChar).ToUpperInvariant()
+            $hasCtrl = ([string]$key.ControlKeyState) -match 'Ctrl'
+            if ($charCode -eq 21 -or ($hasCtrl -and [string]$key.Key -eq 'U')) {
+                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-UpdateAll }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($charCode -eq 9 -or ($hasCtrl -and [string]$key.Key -eq 'I')) {
+                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-InstallAll }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($char -eq 'U') {
+                $toolName = [string]$Snapshot.States[$selected].Name
+                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-ToolUpdate -Name $toolName }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($char -eq 'I') {
+                $toolName = [string]$Snapshot.States[$selected].Name
+                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($char -eq 'R') {
+                Show-ManagerLoading
+                $Snapshot = New-ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
                 continue
             }
         }
@@ -1510,20 +1599,15 @@ function Get-MenuPopupBudget {
     }
 }
 
-function Show-MenuStructure {
-    param(
-        [Parameter(Mandatory)]$Snapshot,
-        [switch]$NoWait
-    )
+function Write-MenuStructureContent {
+    param([Parameter(Mandatory)]$Snapshot)
 
-    try { Clear-Host } catch {}
     Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
     Write-ManagerSection -Title 'Menu Structure'
 
     $groups = @(Get-MenuBudgetRows -Surfaces $Snapshot.Surfaces)
     if ($groups.Count -eq 0) {
         Write-Host '  No menu entries are defined.' -ForegroundColor Yellow
-        if (-not $NoWait) { Wait-ManagerBackKey }
         return
     }
 
@@ -1562,8 +1646,40 @@ function Show-MenuStructure {
     Write-Host "  $($_C.Dim)Each popup has its own 16-item limit. Root popup counts branches/direct items; each submenu counts its own items.$($_C.Reset)"
     Write-Host "  $($_C.Dim)Separators are free. A 4-item test submenu under desktop System Tools rendered normally because each popup stayed under 16.$($_C.Reset)"
     Write-Host "  $($_C.Dim)Menu OK means the expected registry entry exists. Shift only means the entry appears only with Shift + right-click.$($_C.Reset)"
+}
 
-    if (-not $NoWait) { Wait-ManagerBackKey }
+function Show-MenuStructure {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [switch]$NoWait
+    )
+
+    if ($NoWait) {
+        try { Clear-Host } catch {}
+        Write-MenuStructureContent -Snapshot $Snapshot
+        return
+    }
+
+    try { [Console]::CursorVisible = $false } catch {}
+    try {
+        while ($true) {
+            Invoke-ManagerFrame {
+                Write-MenuStructureContent -Snapshot $Snapshot
+                $size = Get-ManagerWindowSize
+                $help = Limit-ManagerText -Value 'Esc/Enter = back   resize-safe full redraw' -Width ([Math]::Max(1, $size.Width - 3))
+                Write-Host ''
+                Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
+            }
+
+            $key = Read-ManagerKey
+            if ([string]$key.Key -eq 'ResizeEvent') { continue }
+            if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
+            if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) { return }
+        }
+    }
+    finally {
+        try { [Console]::CursorVisible = $true } catch {}
+    }
 }
 
 function Show-MenuEntries {
@@ -1737,7 +1853,9 @@ function Show-Menu {
                     continue menuLoop
                 }
                 'ToolsSummary' {
-                    Show-ToolsSummary -Snapshot $snapshot
+                    $Script:ManagerMenuSnapshot = $snapshot
+                    Show-ToolsSummary -Snapshot $snapshot -NoPause:$NoPause
+                    if ($Script:ManagerMenuSnapshot) { $snapshot = $Script:ManagerMenuSnapshot }
                     continue menuLoop
                 }
                 'MenuStructure' {

@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.36**: Applied the resize-safe full-frame renderer to `Menu Structure` and turned `Tools Summary` into the main action hub with `U` update selected, `Ctrl+U` update all installed, `I` install/repair selected, `Ctrl+I` install/repair all, and `R` refresh shortcuts.
 - **Version 1.0.35**: Hardened the interactive manager renderer for aggressive Windows Terminal resizing by switching menu-style screens to synchronized full-frame redraws, polling for resize events while waiting for keys, and locking the console buffer height to the active window height to prevent scrollback tearing.
 - **Version 1.0.34**: Made `Tools Summary` responsive to Windows Terminal resizing. The interactive table now switches to reduced/compact columns when the terminal is too narrow, avoids writing rows wider than the current window, and full-redraws after width/height changes instead of repainting over wrapped stale lines.
 - **Version 1.0.33**: Fixed `Tools Summary` interactive table alignment by rendering each cell with explicit fixed-width truncation/padding before applying row colors. Also hardened budget views against StrictMode failures when a monitored group has no child-count values.

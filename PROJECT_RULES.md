@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Tools Summary is the manager action hub)
+
+- Date: 2026-05-18
+- Problem: Update/install actions were only available from the main menu, forcing extra navigation away from the status table where the selected tool context is already visible.
+- Root cause: `Tools Summary` was still read-only and used Enter for a separate details page even though the table already includes the key install/workspace/remote status fields.
+- Guardrail/rule: Keep `Tools Summary` as the primary action surface: arrow keys select a row, `U` updates the selected tool, `Ctrl+U` updates all installed tools, `I` installs/repairs the selected tool, `Ctrl+I` installs/repairs all tools, and `R` refreshes the cached snapshot. The footer must show these shortcuts with width-safe text.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; read-only `Status`, `Budgets`, and `MenuStructure` smokes passed; `git diff --check` passed. Action shortcuts were not pressed during automated validation because they intentionally run install/update operations.
+
 ### Entry - 2026-05-18 (Manager TUI uses immediate-mode redraw)
 
 - Date: 2026-05-18
