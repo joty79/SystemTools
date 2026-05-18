@@ -381,14 +381,14 @@ function Get-ToolState {
     elseif ([string]::IsNullOrWhiteSpace($remoteCommit)) {
         'Check failed'
     }
-    elseif (-not [string]::IsNullOrWhiteSpace($localCommit) -and $localCommit -eq $remoteCommit) {
-        'Up to date'
+    elseif (-not [string]::IsNullOrWhiteSpace($localCommit) -and $localCommit -ne $remoteCommit) {
+        'Installed behind'
     }
     elseif ($installedSourceDirty) {
         'Dirty-source install'
     }
     else {
-        'Installed behind'
+        'Up to date'
     }
 
     $workspaceStatus = if ([string]::IsNullOrWhiteSpace($workspace.Commit)) {

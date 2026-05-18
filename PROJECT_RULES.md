@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Installed-behind must outrank stale dirty-source metadata)
+
+- Date: 2026-05-18
+- Problem: After committing/pushing from VS Code, `SystemTools host` showed `Dirty-source install` even though installed commit was behind the now-current workspace/remote commit.
+- Root cause: Status precedence checked `source_dirty=true` before falling through to `Installed behind`, so stale dirty-source metadata hid the more actionable update state.
+- Guardrail/rule: Installed commit comparison owns update status. If installed metadata commit differs from GitHub remote, show `Installed behind` regardless of `source_dirty`; show `Dirty-source install` only when installed commit equals remote but metadata still says the install came from dirty local source.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; targeted status precedence smoke confirmed dirty-source metadata plus behind installed commit resolves to `Installed behind`; source `Status` smoke showed `SystemTools host` as `Installed behind` for installed `46471e5` vs remote `183c824`; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.49`.
+
 ### Entry - 2026-05-18 (Dirty-source install guidance should change after source becomes clean)
 
 - Date: 2026-05-18
