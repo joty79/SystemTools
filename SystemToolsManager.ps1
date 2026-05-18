@@ -33,6 +33,8 @@ $_C = @{
 $Script:FamilyConfigPath = Join-Path $PSScriptRoot '.assets\systemtools-family.json'
 $Script:LastManagerNavigationKey = ''
 $Script:LastManagerNavigationAt = [DateTime]::MinValue
+$Script:LastManagerWindowWidth = 0
+$Script:LastManagerWindowHeight = 0
 
 function Get-BlueprintModulePath {
     $candidates = @(
@@ -900,6 +902,50 @@ function Get-ManagerWindowSize {
     }
 }
 
+function Lock-ManagerViewportToWindow {
+    try {
+        $windowSize = $Host.UI.RawUI.WindowSize
+        if ($Host.UI.RawUI.BufferSize.Height -ne $windowSize.Height) {
+            $Host.UI.RawUI.BufferSize = $windowSize
+        }
+    }
+    catch {}
+}
+
+function Test-ManagerWindowResized {
+    $size = Get-ManagerWindowSize
+    if ($size.Width -ne $Script:LastManagerWindowWidth -or $size.Height -ne $Script:LastManagerWindowHeight) {
+        $Script:LastManagerWindowWidth = $size.Width
+        $Script:LastManagerWindowHeight = $size.Height
+        return $true
+    }
+
+    return $false
+}
+
+function Begin-ManagerSyncRender {
+    try { [Console]::Write("$_E[?2026h") } catch {}
+}
+
+function End-ManagerSyncRender {
+    try { [Console]::Write("$_E[?2026l") } catch {}
+}
+
+function Invoke-ManagerFrame {
+    param([Parameter(Mandatory)][scriptblock]$Render)
+
+    Lock-ManagerViewportToWindow
+    Begin-ManagerSyncRender
+    try {
+        try { Clear-Host } catch {}
+        & $Render
+        Write-Host "$_E[J" -NoNewline
+    }
+    finally {
+        End-ManagerSyncRender
+    }
+}
+
 function Limit-ManagerText {
     param(
         [AllowNull()]$Value,
@@ -969,15 +1015,15 @@ function Write-ManagerSection {
 }
 
 function Show-ManagerLoading {
-    try { Clear-Host } catch {}
-    Write-ManagerBanner -StatusLabel 'Reading current status' -StatusColor $_C.Warn
-    Write-Host "  $($_C.Dim)Checking installed metadata, registry entries, workspaces, and GitHub branch heads...$($_C.Reset)$($_C.EraseLn)"
+    Invoke-ManagerFrame {
+        Write-ManagerBanner -StatusLabel 'Reading current status' -StatusColor $_C.Warn
+        Write-Host "  $($_C.Dim)Checking installed metadata, registry entries, workspaces, and GitHub branch heads...$($_C.Reset)$($_C.EraseLn)"
+    }
 }
 
 function Write-ManagerMenuHeader {
     param([Parameter(Mandatory)]$Snapshot)
 
-    try { Clear-Host } catch {}
     $statusLabel = if ($Snapshot.AttentionCount -eq 0) { 'All monitored menu checks OK' } else { "$($Snapshot.AttentionCount) item(s) need attention" }
     $statusColor = if ($Snapshot.AttentionCount -eq 0) { $_C.OK } else { $_C.Warn }
     Write-ManagerBanner -StatusLabel $statusLabel -StatusColor $statusColor
@@ -990,6 +1036,21 @@ function Write-ManagerMenuHeader {
 }
 
 function Read-ManagerKey {
+    try {
+        while (-not [Console]::KeyAvailable) {
+            if (Test-ManagerWindowResized) {
+                return [pscustomobject]@{
+                    Key = 'ResizeEvent'
+                    KeyChar = [char]0
+                    VirtualKeyCode = 0
+                }
+            }
+
+            Start-Sleep -Milliseconds 40
+        }
+    }
+    catch {}
+
     $keyInfo = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
     $keyChar = [char]0
     if ($keyInfo.PSObject.Properties['KeyChar']) {
@@ -1069,22 +1130,25 @@ function Write-ManagerMenuBlock {
     )
 
     try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+    $width = (Get-ManagerWindowSize).Width
 
     Write-ManagerSection -Title 'Main Menu'
 
     for ($i = 0; $i -lt $Items.Count; $i++) {
         $item = $Items[$i]
+        $label = Limit-ManagerText -Value $item.Label -Width ([Math]::Max(1, $width - 8))
         $ansi = if (-not [string]::IsNullOrWhiteSpace([string]$item.Color)) { [string]$item.Color } else { $_C.White }
         if ($i -eq $Selected) {
-            Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)  $([char]0x276F) $($item.Label) $($_C.Reset)$($_C.EraseLn)"
+            Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)  $([char]0x276F) $label $($_C.Reset)$($_C.EraseLn)"
         }
         else {
-            Write-Host "    $ansi$($item.Label)$($_C.Reset)$($_C.EraseLn)"
+            Write-Host "    $ansi$label$($_C.Reset)$($_C.EraseLn)"
         }
     }
 
     Write-Host "$_E[K"
-    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) navigate    Enter = select    1-9/R/Q = shortcut    Esc = exit$($_C.Reset)$($_C.EraseLn)"
+    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    1-9/R/Q = shortcut    Esc = exit" -Width ([Math]::Max(1, $width - 3))
+    Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
     Write-Host "$_E[J" -NoNewline
 }
 
@@ -1097,11 +1161,12 @@ function Write-ManagerToolSelectionBlock {
     )
 
     try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+    $width = (Get-ManagerWindowSize).Width
 
     Write-ManagerSection -Title $Prompt -Icon ''
 
     for ($i = 0; $i -lt $Items.Count; $i++) {
-        $label = [string]$Items[$i].Label
+        $label = Limit-ManagerText -Value $Items[$i].Label -Width ([Math]::Max(1, $width - 8))
         if ($i -eq $Selected) {
             Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)  $([char]0x276F) $label $($_C.Reset)$($_C.EraseLn)"
         }
@@ -1111,7 +1176,8 @@ function Write-ManagerToolSelectionBlock {
     }
 
     Write-Host "$_E[K"
-    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) navigate    Enter = select    Esc = cancel$($_C.Reset)$($_C.EraseLn)"
+    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    Esc = cancel" -Width ([Math]::Max(1, $width - 3))
+    Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
     Write-Host "$_E[J" -NoNewline
 }
 
@@ -1313,25 +1379,20 @@ function Show-ToolsSummary {
     if ($rows.Count -eq 0) { return }
 
     $selected = 0
-    try { Clear-Host } catch {}
-    Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
-    try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
-    $lastSize = Get-ManagerWindowSize
     try { [Console]::CursorVisible = $false } catch {}
     Reset-ManagerNavigationRepeat
 
     try {
         while ($true) {
-            $currentSize = Get-ManagerWindowSize
-            if ($currentSize.Width -ne $lastSize.Width -or $currentSize.Height -ne $lastSize.Height) {
-                try { Clear-Host } catch {}
+            Invoke-ManagerFrame {
                 Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
-                try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
-                $lastSize = $currentSize
+                try { $frameTop = $Host.UI.RawUI.CursorPosition.Y } catch { $frameTop = 0 }
+                Write-ToolsSummaryBlock -Rows $rows -Selected $selected -Top $frameTop
             }
 
-            Write-ToolsSummaryBlock -Rows $rows -Selected $selected -Top $top
             $key = Read-ManagerKey
+            if ([string]$key.Key -eq 'ResizeEvent') { continue }
+
             $direction = Get-ManagerNavigationDirection -Key $key
             if (-not [string]::IsNullOrWhiteSpace($direction)) {
                 if (-not (Test-ManagerNavigationRepeat -Direction $direction)) {
@@ -1344,13 +1405,10 @@ function Show-ToolsSummary {
 
             if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
             if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) {
-                try { Clear-Host } catch {}
-                Show-ToolInspectionState -State $Snapshot.States[$selected]
+                Invoke-ManagerFrame {
+                    Show-ToolInspectionState -State $Snapshot.States[$selected]
+                }
                 Wait-ManagerBackKey
-                try { Clear-Host } catch {}
-                Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
-                try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
-                $lastSize = Get-ManagerWindowSize
                 continue
             }
         }
@@ -1523,16 +1581,20 @@ function Read-ManagerToolSelection {
     if ($items.Count -eq 0) { return $null }
 
     $selected = 0
-    try { Clear-Host } catch {}
-    Write-ManagerBanner -StatusLabel 'Select tool' -StatusColor $_C.Info
-    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
     try { [Console]::CursorVisible = $false } catch {}
     Reset-ManagerNavigationRepeat
 
     try {
         while ($true) {
-            Write-ManagerToolSelectionBlock -Items $items -Selected $selected -Top $menuTop -Prompt $Prompt
+            Invoke-ManagerFrame {
+                Write-ManagerBanner -StatusLabel 'Select tool' -StatusColor $_C.Info
+                try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
+                Write-ManagerToolSelectionBlock -Items $items -Selected $selected -Top $menuTop -Prompt $Prompt
+            }
+
             $key = Read-ManagerKey
+            if ([string]$key.Key -eq 'ResizeEvent') { continue }
+
             $direction = Get-ManagerNavigationDirection -Key $key
             if (-not [string]::IsNullOrWhiteSpace($direction)) {
                 if (-not (Test-ManagerNavigationRepeat -Direction $direction)) {
@@ -1566,14 +1628,17 @@ function Read-ManagerMenuSelection {
     )
 
     $selected = 0
-    Write-ManagerMenuHeader -Snapshot $Snapshot
-    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
     try { [Console]::CursorVisible = $false } catch {}
     Reset-ManagerNavigationRepeat
 
     try {
         while ($true) {
-            Write-ManagerMenuBlock -Items $Items -Selected $selected -Top $menuTop
+            Invoke-ManagerFrame {
+                Write-ManagerMenuHeader -Snapshot $Snapshot
+                try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
+                Write-ManagerMenuBlock -Items $Items -Selected $selected -Top $menuTop
+            }
+
             $key = Read-ManagerKey
             $direction = Get-ManagerNavigationDirection -Key $key
             if (-not [string]::IsNullOrWhiteSpace($direction)) {
@@ -1588,11 +1653,7 @@ function Read-ManagerMenuSelection {
             switch ([string]$key.Key) {
                 'Enter' { return $Items[$selected].Action }
                 'Escape' { return 'Quit' }
-                'ResizeEvent' {
-                    Write-ManagerMenuHeader -Snapshot $Snapshot
-                    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
-                    continue
-                }
+                'ResizeEvent' { continue }
             }
 
             if ($key.VirtualKeyCode -eq 13) { return $Items[$selected].Action }

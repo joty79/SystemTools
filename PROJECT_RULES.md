@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Manager TUI uses immediate-mode redraw)
+
+- Date: 2026-05-18
+- Problem: The `Tools Summary` screen still corrupted after minimize/maximize or repeated WT resizing even after responsive columns were added.
+- Root cause: The menu loop used blocking key reads and partial repaint, so mouse-driven resize events were not handled until the next keypress and old scrollback/wrapped lines could reappear.
+- Guardrail/rule: Interactive manager screens should use WT synchronized output, full-frame redraw on each navigation/resize frame, resize polling while waiting for keys, and `BufferSize.Height = WindowSize.Height` when possible. Avoid alternate screen for this PowerShell/ConPTY path because it can desync window-size reporting.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; read-only `Status`, `Budgets`, and `MenuStructure` smokes passed; `git diff --check` passed. Interactive WT resize still needs live user verification.
+
 ### Entry - 2026-05-18 (Manager Tools Summary must be width-safe)
 
 - Date: 2026-05-18
