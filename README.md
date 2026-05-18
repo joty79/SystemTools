@@ -103,8 +103,14 @@ The status table separates installed provenance from workspace state:
 |--------|--------------|
 | `InstallAll` / `RepairAll` | Runs each repo's generated installer from the local checkout when available |
 | `UpdateAll` | Updates installed tools from GitHub through their generated installers |
-| `Tools Summary` | Navigable installed/workspace/remote table; Enter opens the selected tool's details without changing anything |
+| `Tools Summary` | Navigable installed/workspace/remote table with selected-row guidance; Enter opens a WT Git review pane when the selected workspace needs review |
 | `Menu Structure` | Directory-tree style view grouped by human right-click targets, with monitored tools, entry visibility, menu verification, and per-popup 16-item budget status |
+
+`Tools Summary` also shows an `Actions Needed` section for the selected row. It recommends the safest next step, such as `U` for GitHub update, `I` for local install/repair, menu repair, workspace review, or no action. When a selected row needs Git review, `Enter` opens a vertical WT split pane in that tool's workspace with suggested first commands. The review pane is a normal shell; close it with `exit` or `Ctrl+Shift+W`.
+
+When `WorkState` is `Current + dirty`, `Update` still uses the installed tool's GitHub update path and does not touch the local dirty workspace. `Install` / `Repair` uses the local checkout when available, so it will deploy the uncommitted workspace files and mark the installed metadata as a dirty-source install.
+
+Dirty workspace guidance stays advisory. The manager can suggest `git status -sb`, `git diff --stat`, and upstream comparison commands, but it does not auto-commit, auto-rebase, or auto-push source repos.
 
 ---
 

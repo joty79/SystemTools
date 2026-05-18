@@ -16,6 +16,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.47**: Simplified the Git review pane close hint by removing the ineffective `Esc` note and highlighting `exit` / `Ctrl+Shift+W` in orange for faster scanning.
+- **Version 1.0.46**: Removed the forced Git review pane close helper that caused WT to show a terminated `0xffffffff` shell, and replaced it with clear in-pane close guidance (`exit` or `Ctrl+Shift+W`).
+- **Version 1.0.45**: Fixed the Git review pane's suggested upstream comparison command for PowerShell by quoting `HEAD...@{u}`, preventing pwsh from misparsing the upstream ref.
+- **Version 1.0.44**: Changed `Enter` Git review from a separate WT tab to a vertical WT split pane when the manager is already running inside Windows Terminal, matching the `SystemCleanup` full-cleanup pattern.
+- **Version 1.0.43**: Fixed the `Enter` git-review tab launcher crash under StrictMode by generating the review startup script from a literal template with placeholders, avoiding accidental expansion of helper-script variables such as `$parent`.
+- **Version 1.0.42**: Added `Enter` git-review tabs from `Tools Summary` for selected tools that need dirty/different workspace review. The review tab opens in the selected workspace directory and closes when `Esc` leaves `Tools Summary`.
+- **Version 1.0.41**: Added a selected-row `Actions Needed` guidance section to `Tools Summary`, recommending update, install/repair, menu repair, workspace review, or no action based on the selected tool's installed/menu/workspace/remote state.
+- **Version 1.0.40**: Added semantic `WorkState` colors in `Tools Summary`: green for `Current`, yellow for dirty/different workspace states, red for missing workspace/git state, and dim fallback for unknown states.
+- **Version 1.0.39**: Hardened the `Tools Summary` footer against compact/resized Windows Terminal widths by replacing fragile nested-array shortcut definitions with object-based segments, preventing the arrow-key redraw crash in `Write-ManagerShortcutFooter`.
 - **Version 1.0.38**: Removed `Refresh status snapshot` from the main menu and kept refresh as a `Tools Summary` footer shortcut. Standardized interactive footer coloring so action keys are visually distinct from descriptions, arrows render white, `Enter` renders green, and `Esc` renders red.
 - **Version 1.0.37**: Removed duplicate update/install actions from the main interactive menu now that `Tools Summary` owns those shortcuts. Updating or installing/repairing the `SystemTools` host from `Tools Summary` now relaunches the manager in a fresh WT process after a successful operation so the running tool manager is no longer the stale pre-update script.
 - **Version 1.0.36**: Applied the resize-safe full-frame renderer to `Menu Structure` and turned `Tools Summary` into the main action hub with `U` update selected, `Ctrl+U` update all installed, `I` install/repair selected, `Ctrl+I` install/repair all, and `R` refresh shortcuts.
@@ -84,4 +93,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **SystemToolsMenu Installer**: Fixed a critical bug in `Install-SystemToolsMenu.ps1` where using the `$args` automatic variable caused silent failures during registry writing.
 - **Menu Icons**: Synced context menu icons in `Install-SystemToolsMenu.ps1` to use the correct `.ico` files from `.assets\icons\` instead of generic `imageres.dll` fallback icons.
 - **SubCommands Empty Data**: Fixed an issue where empty `SubCommands` was written as literal `""` instead of a true empty string during registry installation.
-

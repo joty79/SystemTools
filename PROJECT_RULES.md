@@ -14,6 +14,96 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Git review pane close hint should be concise and scannable)
+
+- Date: 2026-05-18
+- Problem: The review pane included an `Esc works in the manager pane only` hint that was not useful from the review pane and made the close guidance harder to scan.
+- Root cause: The pane tried to explain cross-pane key scope instead of showing the actionable close methods.
+- Guardrail/rule: For WT review panes, show only actionable pane-local close guidance. Keep the sentence green, and highlight the actual commands/keys (`exit`, `Ctrl+Shift+W`) with the warning/orange color.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; generated review pane parser smoke confirmed the `Esc` hint is gone and `exit` / `Ctrl+Shift+W` use `DarkYellow`; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.47`.
+
+### Entry - 2026-05-18 (Review panes should not be force-killed from manager Esc)
+
+- Date: 2026-05-18
+- Problem: Leaving the manager with `Esc` after opening a Git review split pane caused the review pane to show `[process exited with code 4294967295 (0xffffffff)]`.
+- Root cause: The manager created a hidden helper process that watched for an `Esc` close signal and then force-killed the interactive review pane's parent PowerShell process. Windows Terminal kept the pane visible as a terminated shell, which is noisier than leaving a normal prompt.
+- Guardrail/rule: Do not force-kill interactive WT review panes from another pane. Treat them as normal shells and show explicit close guidance: type `exit` or press `Ctrl+Shift+W`. `Esc` remains a manager-pane navigation key only.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; generated review pane parser smoke confirmed no `Stop-Process` force-kill remains and the `exit` / `Ctrl+Shift+W` close hint is present; source `Status` smoke passed; `.gitattributes` added for repo line-ending policy; touched text files normalized to LF; `git diff --check` passed without LF/CRLF warnings; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.46`.
+
+### Entry - 2026-05-18 (SystemTools repo pins line endings with gitattributes)
+
+- Date: 2026-05-18
+- Problem: Git commands repeatedly warned that touched `.md`, `.ps1`, and `.json` files would have LF replaced by CRLF because the machine-level Git config has `core.autocrlf=true`.
+- Root cause: The repo had no `.gitattributes`, so global Git line-ending conversion policy controlled the working tree and produced noisy warnings on every diff/status-like check after edits.
+- Guardrail/rule: Keep repo-owned text sources normalized through `.gitattributes`: scripts/docs/json use LF, while Windows launcher/integration files such as `.cmd`, `.bat`, `.reg`, and `.vbs` stay CRLF. After changing this policy, normalize touched text files and verify with `git ls-files --eol` plus `git diff --check`.
+- Files affected: `.gitattributes`, `CHANGELOG.md`, `PROJECT_RULES.md`, `README.md`, `SystemToolsManager.ps1`, `app-metadata.json`.
+- Validation/tests run: `git ls-files --eol` showed touched files as `w/lf attr/text eol=lf`; `git diff --check` passed without LF/CRLF warnings.
+
+### Entry - 2026-05-18 (PowerShell Git upstream refs must be quoted in suggested commands)
+
+- Date: 2026-05-18
+- Problem: The Git review pane suggested `git log --oneline --left-right HEAD...@{u}`, which failed from PowerShell with an ambiguous revision error after `@{u}` was misparsed.
+- Root cause: `@{...}` has special syntax meaning in PowerShell, so unquoted Git reflog/upstream refs are not safe in displayed commands that users copy or type into pwsh.
+- Guardrail/rule: Any suggested Git command shown in PowerShell UI that contains `@{u}`, `@{upstream}`, or similar reflog syntax must quote the revision, for example `git log --oneline --left-right 'HEAD...@{u}'`.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; generated review startup script parser/quote smoke confirmed the displayed upstream comparison is `git log --oneline --left-right 'HEAD...@{u}'`; real `git log --oneline --left-right 'HEAD...@{u}'` ran successfully in PowerShell; source `Status` smoke passed; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.45`.
+
+### Entry - 2026-05-18 (Git review should use WT split pane when launched from manager)
+
+- Date: 2026-05-18
+- Problem: `Enter` Git review opened in a separate WT tab instead of the side-by-side pane style already used by `SystemCleanup`.
+- Root cause: The manager used `wt new-tab` unconditionally when `wt.exe` was available, instead of checking whether the current process was already hosted inside Windows Terminal.
+- Guardrail/rule: Manager-adjacent review/runtime surfaces should use `wt -w 0 split-pane -V` when `$env:WT_SESSION` is present, so the current menu remains visible beside the work pane. Use `new-tab` or a standalone PowerShell fallback only outside WT.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; targeted WT argument smoke confirmed `split-pane -V` for WT-hosted review and `new-tab` fallback outside WT; generated review startup script parser smoke passed; source `Status` smoke passed; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.44`. Live WT split-pane keypress behavior still needs visual confirmation.
+
+### Entry - 2026-05-18 (Generated PowerShell review tab scripts must be literal templates)
+
+- Date: 2026-05-18
+- Problem: Pressing `Enter` on a dirty/different `Tools Summary` row crashed before opening the Git review tab with `The variable '$parent' cannot be retrieved because it has not been set.`
+- Root cause: The review-tab startup script was built with an expandable here-string that contained intended-literal helper script lines with `$parent`, `$ParentPid`, and `$SignalPath`; `Set-StrictMode -Version Latest` expanded those variables in the manager process before launch.
+- Guardrail/rule: Generated PowerShell scripts that contain their own `$` variables must use single-quoted/literal templates with explicit placeholders, and should be parser-validated as generated text before shipping.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for source and installed `SystemToolsManager.ps1`; generated review startup script parser smoke passed for source and installed manager; dirty-row Git review predicate smoke passed; source and installed `Status` smokes passed; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.43`. Live WT Enter/Esc tab behavior still needs visual confirmation.
+
+### Entry - 2026-05-18 (Manager Enter opens selected workspace git review tab)
+
+- Date: 2026-05-18
+- Problem: Dirty/different workspaces still required leaving the manager to manually open the right repo before inspecting Git state.
+- Root cause: `Actions Needed` could advise Git review, but `Enter` in `Tools Summary` did not create an actionable review surface.
+- Guardrail/rule: For selected tools that need Git review and have a workspace path, `Enter` opens a new WT tab in that workspace with suggested first commands. Keep review tabs advisory-only and close the active helper-backed tab when `Esc` leaves `Tools Summary`.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for source and installed `SystemToolsManager.ps1`; source and installed `Status` smokes passed; targeted Git review logic smoke passed; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.42`. Live WT Enter/Esc tab behavior still needs visual confirmation.
+
+### Entry - 2026-05-18 (Manager selected-row action guidance)
+
+- Date: 2026-05-18
+- Problem: `Tools Summary` showed state but did not tell the user what to do next for the selected tool, especially when dirty workspaces made update/install choices risky.
+- Root cause: The interactive action hub had shortcuts but no per-selection decision guidance, and dirty Git states require context-sensitive human review rather than blind automation.
+- Guardrail/rule: Show a selected-row `Actions Needed` section above `Tools Summary` with the best next action and a short Git/workspace note. Keep Git recovery advisory-only: suggest inspection commands and safe direction, but do not auto-commit, auto-rebase, or auto-push dirty source repos.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for source and installed `SystemToolsManager.ps1`; source and installed `Status` smokes passed; targeted `Actions Needed` render smoke passed across compact and wide widths; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed metadata showed version `1.0.41`.
+
+### Entry - 2026-05-18 (Manager WorkState color semantics)
+
+- Date: 2026-05-18
+- Problem: `Tools Summary` showed `Current`, `Current + dirty`, `No workspace`, and `No git` in the same row color, making workspace risk hard to scan.
+- Root cause: The interactive table colored whole rows by overall status/menu state but did not color the `WorkState` cell by workspace meaning.
+- Guardrail/rule: Color `WorkState` semantically without disturbing the selected-row highlight: green for `Current`, yellow for dirty/different states, red for missing workspace/git states, and dim for unknown fallback.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for source and installed `SystemToolsManager.ps1`; source `Status` smoke passed; targeted `Tools Summary` color render smoke passed across compact and wide widths; `git diff --check` passed; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed; installed `Status` smoke showed version `1.0.40`.
+
+### Entry - 2026-05-18 (Manager footer must avoid positional shortcut arrays)
+
+- Date: 2026-05-18
+- Problem: `Tools Summary` could crash after compact/resized WT redraws with `Index was outside the bounds of the array` in `Write-ManagerShortcutFooter`.
+- Root cause: Footer shortcut definitions used nested positional arrays and then accessed `$action[0]` / `$action[1]`, which is too fragile under PowerShell enumeration/shape changes in the TUI redraw path.
+- Guardrail/rule: Use object-based shortcut segment definitions (`Key`, `Text`) for interactive manager footers. Do not rely on positional nested arrays for width-sensitive redraw UI.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for source and installed `SystemToolsManager.ps1`; read-only `Status` and `MenuStructure` smokes passed; targeted footer width smoke passed for compact and wide widths; local-source `Install.ps1 -Action Update -PackageSource Local -Force -NoExplorerRestart` completed.
+
 ### Entry - 2026-05-18 (Manager shortcut footer color semantics)
 
 - Date: 2026-05-18

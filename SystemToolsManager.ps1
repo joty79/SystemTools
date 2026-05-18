@@ -38,6 +38,7 @@ $Script:LastManagerWindowHeight = 0
 $Script:ManagerMenuSnapshot = $null
 $Script:LastManagerOperationSucceeded = $true
 $Script:ManagerExitRequested = $false
+$Script:ManagerReviewTabStartupPath = ''
 
 function Get-BlueprintModulePath {
     $candidates = @(
@@ -1383,6 +1384,253 @@ function Format-ManagerCell {
     return $text.PadRight($Width)
 }
 
+function Get-ManagerWorkStateColor {
+    param([AllowEmptyString()][string]$WorkState)
+
+    switch -Regex ($WorkState) {
+        '^Current$' { return $_C.OK }
+        'dirty' { return $_C.Warn }
+        '^Different' { return $_C.Warn }
+        'No workspace|No git' { return $_C.Fail }
+        default { return $_C.Dim }
+    }
+}
+
+function Test-ManagerNeedsGitReview {
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row
+    )
+
+    if ([string]::IsNullOrWhiteSpace([string]$State.WorkspacePath)) { return $false }
+    if (-not (Test-Path -LiteralPath $State.WorkspacePath -PathType Container)) { return $false }
+    if ($Row.WorkState -match 'dirty') { return $true }
+    if ($Row.WorkState -eq 'Different') { return $true }
+    if ($Row.Status -eq 'Dirty-source install') { return $true }
+    return $false
+}
+
+function Get-ManagerActionGuidance {
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row
+    )
+
+    $recommendation = 'No action needed'
+    $reason = 'Installed copy, menu state, workspace, and remote look aligned.'
+    $gitNote = 'Git: clean/current.'
+    $color = $_C.OK
+
+    if (-not $State.HasInstaller) {
+        if ($Row.Menu -eq 'OK') {
+            $recommendation = 'No installer action'
+            $reason = 'This is a monitored registry/menu surface, not a standalone package.'
+            $gitNote = 'Git: not applicable for this monitored surface.'
+            $color = $_C.Dim
+        }
+        else {
+            $recommendation = 'Repair host/menu owner'
+            $reason = 'The monitored menu entry is missing or partial; repair the owning package.'
+            $gitNote = 'Git: not applicable until the menu owner is repaired.'
+            $color = $_C.Fail
+        }
+    }
+    elseif (-not $State.Installed) {
+        $recommendation = 'Press I to install/repair selected'
+        $reason = 'The package is not installed or its expected installer is missing.'
+        $gitNote = if ($Row.WorkState -eq 'No workspace') { 'Install will clone/use package source; local workspace is missing.' } else { 'Install uses local checkout when available.' }
+        $color = $_C.Fail
+    }
+    elseif ($Row.Menu -ne 'OK') {
+        $recommendation = 'Press I to repair selected'
+        $reason = 'Installed files exist, but expected context-menu registry entries are not OK.'
+        $gitNote = 'Repair uses local checkout when available; inspect dirty workspace first.'
+        $color = $_C.Warn
+    }
+    elseif ($Row.Status -eq 'Installed behind') {
+        $recommendation = 'Press U to update selected'
+        $reason = 'Installed metadata is behind the latest GitHub branch commit.'
+        $gitNote = 'Update uses GitHub/latest and does not touch local workspace files.'
+        $color = $_C.Warn
+    }
+    elseif ($Row.Status -eq 'Dirty-source install') {
+        $recommendation = 'Press Enter to review local source'
+        $reason = 'Installed files came from uncommitted local changes; metadata may not describe the exact files.'
+        $gitNote = 'Enter opens a WT pane. Run git status -sb; git diff --stat; then commit/push or reinstall clean.'
+        $color = $_C.Warn
+    }
+    elseif ($Row.WorkState -match 'dirty') {
+        $recommendation = 'Press Enter to review dirty workspace'
+        $reason = 'Installed copy is current, but local checkout has uncommitted changes.'
+        $gitNote = 'Enter opens a WT pane. I installs dirty local files; U installs GitHub/latest.'
+        $color = $_C.Warn
+    }
+    elseif ($Row.WorkState -eq 'Different') {
+        $recommendation = 'Press Enter to review workspace drift'
+        $reason = 'Local checkout commit differs from the latest GitHub branch commit.'
+        $gitNote = "Enter opens a WT pane. Run git fetch --prune; git status -sb; git log --oneline --left-right 'HEAD...@{u}'"
+        $color = $_C.Warn
+    }
+    elseif ($Row.WorkState -eq 'No workspace') {
+        $recommendation = 'Optional: restore local repo'
+        $reason = 'Installed package can still update from GitHub, but local repair/edit source is missing.'
+        $gitNote = 'Clone the repo if you want local repair/install from source.'
+        $color = $_C.Fail
+    }
+    elseif ($Row.WorkState -eq 'No git') {
+        $recommendation = 'No git automation'
+        $reason = 'This workspace is not a Git repo; update/repair depends on package ownership.'
+        $gitNote = 'Git: unavailable for this workspace.'
+        $color = $_C.Fail
+    }
+
+    [pscustomobject]@{
+        Recommendation = $recommendation
+        Reason = $reason
+        GitNote = $gitNote
+        Color = $color
+    }
+}
+
+function Write-ManagerActionsNeeded {
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row,
+        [Parameter(Mandatory)][int]$Width
+    )
+
+    $guidance = Get-ManagerActionGuidance -State $State -Row $Row
+    Write-ManagerSection -Title 'Actions Needed'
+    $lineWidth = [Math]::Max(1, $Width - 3)
+    Write-Host "  $($_C.H2)Selected:$($_C.Reset) $($_C.White)$(Limit-ManagerText -Value $Row.Tool -Width ([Math]::Max(1, $lineWidth - 10)))$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.H2)Best next:$($_C.Reset) $($guidance.Color)$(Limit-ManagerText -Value $guidance.Recommendation -Width ([Math]::Max(1, $lineWidth - 12)))$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $guidance.Reason -Width $lineWidth)$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $guidance.GitNote -Width $lineWidth)$($_C.Reset)$($_C.EraseLn)"
+}
+
+function New-ManagerSingleQuotedLiteral {
+    param([AllowEmptyString()][string]$Value)
+
+    return "'$($Value.Replace("'", "''"))'"
+}
+
+function Close-ManagerWorkspaceReviewTab {
+    if (-not [string]::IsNullOrWhiteSpace($Script:ManagerReviewTabStartupPath)) {
+        Remove-Item -LiteralPath $Script:ManagerReviewTabStartupPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $Script:ManagerReviewTabStartupPath = ''
+}
+
+function New-ManagerWorkspaceReviewStartupScript {
+    param(
+        [Parameter(Mandatory)][string]$WorkspaceLiteral,
+        [Parameter(Mandatory)][string]$ToolLiteral
+    )
+
+    $template = @'
+$ErrorActionPreference = 'Continue'
+Set-Location -LiteralPath __WORKSPACE_LITERAL__
+Write-Host ''
+Write-Host 'Git review: ' -NoNewline -ForegroundColor Cyan
+Write-Host __TOOL_LITERAL__ -ForegroundColor White
+Write-Host 'Workspace: ' -NoNewline -ForegroundColor DarkGray
+Write-Host (Get-Location).Path -ForegroundColor Green
+Write-Host ''
+Write-Host 'Suggested first commands:' -ForegroundColor Yellow
+Write-Host '  git status -sb' -ForegroundColor Gray
+Write-Host '  git diff --stat' -ForegroundColor Gray
+Write-Host '  git fetch --prune' -ForegroundColor Gray
+Write-Host "  git log --oneline --left-right 'HEAD...@{u}'" -ForegroundColor Gray
+Write-Host ''
+Write-Host 'Pane controls:' -ForegroundColor Yellow
+Write-Host '  Close this review pane by typing ' -NoNewline -ForegroundColor Green
+Write-Host 'exit' -NoNewline -ForegroundColor DarkYellow
+Write-Host ' or pressing ' -NoNewline -ForegroundColor Green
+Write-Host 'Ctrl+Shift+W' -NoNewline -ForegroundColor DarkYellow
+Write-Host '.' -ForegroundColor Green
+Write-Host ''
+git status -sb
+'@
+
+    return $template.Replace('__WORKSPACE_LITERAL__', $WorkspaceLiteral).
+        Replace('__TOOL_LITERAL__', $ToolLiteral)
+}
+
+function New-ManagerWorkspaceReviewWtArguments {
+    param(
+        [Parameter(Mandatory)][string]$Title,
+        [Parameter(Mandatory)][string]$WorkspacePath,
+        [Parameter(Mandatory)][string]$StartupPath,
+        [switch]$UseSplitPane
+    )
+
+    $prefix = if ($UseSplitPane) {
+        @('-w', '0', 'split-pane', '-V')
+    }
+    else {
+        @('-w', '0', 'new-tab')
+    }
+
+    return @(
+        $prefix
+        '--title'
+        $Title
+        '--startingDirectory'
+        $WorkspacePath
+        'pwsh.exe'
+        '-NoExit'
+        '-ExecutionPolicy'
+        'Bypass'
+        '-File'
+        $StartupPath
+    )
+}
+
+function Start-ManagerWorkspaceReviewTab {
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row
+    )
+
+    if (-not (Test-ManagerNeedsGitReview -State $State -Row $Row)) {
+        return $false
+    }
+
+    Close-ManagerWorkspaceReviewTab
+
+    $reviewRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'SystemToolsManager'
+    New-Item -ItemType Directory -Path $reviewRoot -Force | Out-Null
+    $token = [guid]::NewGuid().ToString('N')
+    $startupPath = Join-Path $reviewRoot "review-start-$token.ps1"
+    $workspacePath = (Resolve-Path -LiteralPath $State.WorkspacePath).Path
+    $toolLabel = [string]$Row.Tool
+    $tabName = [regex]::Replace($toolLabel, '[^A-Za-z0-9._-]+', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($tabName)) { $tabName = 'Workspace' }
+    $tabTitle = "GitReview-$tabName"
+
+    $workspaceLiteral = New-ManagerSingleQuotedLiteral -Value $workspacePath
+    $toolLiteral = New-ManagerSingleQuotedLiteral -Value $toolLabel
+    $startup = New-ManagerWorkspaceReviewStartupScript -WorkspaceLiteral $workspaceLiteral -ToolLiteral $toolLiteral
+
+    Set-Content -LiteralPath $startupPath -Value $startup -Encoding UTF8 -Force
+    $Script:ManagerReviewTabStartupPath = $startupPath
+
+    $wtCommand = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($null -ne $wtCommand) {
+        $wtArgs = New-ManagerWorkspaceReviewWtArguments -Title $tabTitle -WorkspacePath $workspacePath -StartupPath $startupPath -UseSplitPane:($null -ne $env:WT_SESSION)
+        Start-Process -FilePath $wtCommand.Source -ArgumentList $wtArgs | Out-Null
+        return $true
+    }
+
+    Start-Process -FilePath 'pwsh.exe' -WorkingDirectory $workspacePath -ArgumentList @(
+        '-NoExit',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $startupPath
+    ) | Out-Null
+    return $true
+}
+
 function Get-ManagerToolsSummaryColumns {
     param([Parameter(Mandatory)][int]$ConsoleWidth)
 
@@ -1466,7 +1714,8 @@ function New-ManagerToolsSummaryLine {
         [Parameter(Mandatory)][object[]]$Columns,
         $Row = $null,
         [switch]$Header,
-        [switch]$Separator
+        [switch]$Separator,
+        [switch]$ColorizeWorkState
     )
 
     $cells = foreach ($column in $Columns) {
@@ -1480,7 +1729,13 @@ function New-ManagerToolsSummaryLine {
             Get-ManagerToolsSummaryValue -Row $Row -Key $column.Key
         }
 
-        Format-ManagerCell -Value $value -Width ([int]$column.Width)
+        $cell = Format-ManagerCell -Value $value -Width ([int]$column.Width)
+        if ($ColorizeWorkState -and -not $Header -and -not $Separator -and $column.Key -eq 'WorkState') {
+            "$(Get-ManagerWorkStateColor -WorkState ([string]$value))$cell$($_C.Reset)$((Get-ManagerRowColor -Row $Row))"
+        }
+        else {
+            $cell
+        }
     }
 
     return '  ' + ($cells -join '  ')
@@ -1492,41 +1747,43 @@ function Write-ManagerShortcutFooter {
     $wide = $Width -ge 92
     $actions = if ($wide) {
         @(
-            @('U', ' update selected   ')
-            @('^U', ' update all   ')
-            @('I', ' install/repair selected   ')
-            @('^I', ' install/repair all   ')
-            @('R', ' refresh')
+            [pscustomobject]@{ Key = 'U'; Text = ' update selected   ' }
+            [pscustomobject]@{ Key = '^U'; Text = ' update all   ' }
+            [pscustomobject]@{ Key = 'I'; Text = ' install/repair selected   ' }
+            [pscustomobject]@{ Key = '^I'; Text = ' install/repair all   ' }
+            [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
         )
     }
     elseif ($Width -ge 64) {
         @(
-            @('U', ' update   ')
-            @('^U', ' all   ')
-            @('I', ' repair   ')
-            @('^I', ' repair all   ')
-            @('R', ' refresh')
+            [pscustomobject]@{ Key = 'U'; Text = ' update   ' }
+            [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
+            [pscustomobject]@{ Key = 'I'; Text = ' repair   ' }
+            [pscustomobject]@{ Key = '^I'; Text = ' repair all   ' }
+            [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
         )
     }
     else {
         @(
-            @('U', ' upd   ')
-            @('^U', ' all   ')
-            @('I', ' rep   ')
-            @('^I', ' all   ')
-            @('R', ' ref')
+            [pscustomobject]@{ Key = 'U'; Text = ' upd   ' }
+            [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
+            [pscustomobject]@{ Key = 'I'; Text = ' rep   ' }
+            [pscustomobject]@{ Key = '^I'; Text = ' all   ' }
+            [pscustomobject]@{ Key = 'R'; Text = ' ref' }
         )
     }
 
     $actionSegments = foreach ($action in $actions) {
-        New-ManagerShortcutSegment -Text $action[0] -Color $_C.Warn
-        New-ManagerShortcutSegment -Text $action[1] -Color $_C.Dim
+        New-ManagerShortcutSegment -Text $action.Key -Color $_C.Warn
+        New-ManagerShortcutSegment -Text $action.Text -Color $_C.Dim
     }
 
     Write-ManagerShortcutSegments -Segments @($actionSegments) -Width ([Math]::Max(1, $Width - 3))
     Write-ManagerShortcutSegments -Segments @(
         New-ManagerShortcutSegment -Text "$([char]0x2191)$([char]0x2193)" -Color $_C.White
         New-ManagerShortcutSegment -Text ' move   ' -Color $_C.Dim
+        New-ManagerShortcutSegment -Text 'Enter' -Color $_C.OK
+        New-ManagerShortcutSegment -Text ' = git review   ' -Color $_C.Dim
         New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
         New-ManagerShortcutSegment -Text ' = back' -Color $_C.Dim
     ) -Width ([Math]::Max(1, $Width - 3))
@@ -1535,12 +1792,16 @@ function Write-ManagerShortcutFooter {
 function Write-ToolsSummaryBlock {
     param(
         [Parameter(Mandatory)][object[]]$Rows,
+        [Parameter(Mandatory)][object[]]$States,
         [Parameter(Mandatory)][int]$Selected,
         [Parameter(Mandatory)][int]$Top
     )
 
     $size = Get-ManagerWindowSize
     try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+    if ($Selected -ge 0 -and $Selected -lt $Rows.Count -and $Selected -lt $States.Count) {
+        Write-ManagerActionsNeeded -State $States[$Selected] -Row $Rows[$Selected] -Width $size.Width
+    }
     Write-ManagerSection -Title 'Tools Summary'
     $columns = @(Get-ManagerToolsSummaryColumns -ConsoleWidth $size.Width)
     $isCompact = $columns.Count -le 3
@@ -1557,6 +1818,7 @@ function Write-ToolsSummaryBlock {
             Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)$text$($_C.Reset)$($_C.EraseLn)"
         }
         else {
+            $text = New-ManagerToolsSummaryLine -Columns $columns -Row $row -ColorizeWorkState
             Write-Host "$((Get-ManagerRowColor -Row $row))$text$($_C.Reset)$($_C.EraseLn)"
         }
 
@@ -1597,7 +1859,7 @@ function Show-ToolsSummary {
             Invoke-ManagerFrame {
                 Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
                 try { $frameTop = $Host.UI.RawUI.CursorPosition.Y } catch { $frameTop = 0 }
-                Write-ToolsSummaryBlock -Rows $rows -Selected $selected -Top $frameTop
+                Write-ToolsSummaryBlock -Rows $rows -States @($Snapshot.States) -Selected $selected -Top $frameTop
             }
 
             $key = Read-ManagerKey
@@ -1614,10 +1876,12 @@ function Show-ToolsSummary {
             Reset-ManagerNavigationRepeat
 
             if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) {
+                Close-ManagerWorkspaceReviewTab
                 $Script:ManagerMenuSnapshot = $Snapshot
                 return
             }
             if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) {
+                [void](Start-ManagerWorkspaceReviewTab -State $Snapshot.States[$selected] -Row $rows[$selected])
                 continue
             }
 
