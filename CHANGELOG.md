@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.33**: Fixed `Tools Summary` interactive table alignment by rendering each cell with explicit fixed-width truncation/padding before applying row colors. Also hardened budget views against StrictMode failures when a monitored group has no child-count values.
 - **Version 1.0.32**: Corrected `Inside System Tools` budget reporting after a live desktop probe showed a 4-item test submenu renders normally when each popup stays under 16. The view now reports the root popup budget separately from each submenu popup budget.
 - **Version 1.0.30**: Changed `Inside System Tools` budget reporting to show practical expansion risk more prominently instead of relying only on raw registry group counts.
 - **Version 1.0.29**: Updated `Menu Structure` to show `Inside System Tools` separately for desktop/folder-background, folder, and file targets, because their `Windows` submenu counts differ (`6`, `5`, and `3` respectively). PNG file targets now include the monitored `System Tools` file menu alongside `ContextLens`.

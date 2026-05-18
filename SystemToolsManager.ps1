@@ -664,7 +664,8 @@ function Show-Budgets {
     }
 
     $rows = foreach ($group in ($surfaces | Group-Object BudgetGroup)) {
-        $max = ($group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum).Maximum
+        $measure = $group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum
+        $max = try { $measure.Maximum } catch { $null }
         $count = if ($null -eq $max) { 0 } else { [int]$max }
         $remaining = 16 - $count
         $status = if ($count -gt 16) { 'Over limit' } elseif ($count -ge 14) { 'Near limit' } else { 'OK' }
@@ -1105,6 +1106,56 @@ function Get-ManagerRowColor {
     return $_C.White
 }
 
+function Format-ManagerCell {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory)][int]$Width,
+        [ValidateSet('Left','Right')][string]$Align = 'Left'
+    )
+
+    $text = if ($null -eq $Value) { '' } else { [string]$Value }
+    if ($text.Length -gt $Width) {
+        if ($Width -le 1) { return $text.Substring(0, $Width) }
+        $text = $text.Substring(0, $Width - 1) + '~'
+    }
+
+    if ($Align -eq 'Right') {
+        return $text.PadLeft($Width)
+    }
+
+    return $text.PadRight($Width)
+}
+
+function New-ManagerToolsSummaryLine {
+    param(
+        [Parameter(Mandatory)]$Tool,
+        [Parameter(Mandatory)]$Scope,
+        [Parameter(Mandatory)]$Installed,
+        [Parameter(Mandatory)]$Menu,
+        [Parameter(Mandatory)]$Status,
+        [Parameter(Mandatory)]$Ver,
+        [Parameter(Mandatory)]$Inst,
+        [Parameter(Mandatory)]$Work,
+        [Parameter(Mandatory)]$WorkState,
+        [Parameter(Mandatory)]$Remote
+    )
+
+    $cells = @(
+        Format-ManagerCell -Value $Tool -Width 28
+        Format-ManagerCell -Value $Scope -Width 12
+        Format-ManagerCell -Value $Installed -Width 3
+        Format-ManagerCell -Value $Menu -Width 7
+        Format-ManagerCell -Value $Status -Width 16
+        Format-ManagerCell -Value $Ver -Width 7
+        Format-ManagerCell -Value $Inst -Width 8
+        Format-ManagerCell -Value $Work -Width 8
+        Format-ManagerCell -Value $WorkState -Width 16
+        Format-ManagerCell -Value $Remote -Width 8
+    )
+
+    return '  ' + ($cells -join '  ')
+}
+
 function Write-ToolsSummaryBlock {
     param(
         [Parameter(Mandatory)][object[]]$Rows,
@@ -1114,12 +1165,12 @@ function Write-ToolsSummaryBlock {
 
     try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
     Write-ManagerSection -Title 'Tools Summary'
-    Write-Host ("  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f 'Tool','Scope','In','OK','Status','Ver','Inst','Work','WorkState','Remote') -ForegroundColor Green
-    Write-Host ("  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f '----','-----','--','--','------','---','----','----','---------','------') -ForegroundColor Green
+    Write-Host (New-ManagerToolsSummaryLine -Tool 'Tool' -Scope 'Scope' -Installed 'In' -Menu 'Menu' -Status 'Status' -Ver 'Ver' -Inst 'Inst' -Work 'Work' -WorkState 'WorkState' -Remote 'Remote') -ForegroundColor Green
+    Write-Host (New-ManagerToolsSummaryLine -Tool '----' -Scope '-----' -Installed '--' -Menu '----' -Status '------' -Ver '---' -Inst '----' -Work '----' -WorkState '---------' -Remote '------') -ForegroundColor Green
 
     for ($i = 0; $i -lt $Rows.Count; $i++) {
         $row = $Rows[$i]
-        $text = "  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f $row.Tool, $row.Scope, $row.Installed, $row.Menu, $row.Status, $row.Ver, $row.Inst, $row.Work, $row.WorkState, $row.Remote
+        $text = New-ManagerToolsSummaryLine -Tool $row.Tool -Scope $row.Scope -Installed $row.Installed -Menu $row.Menu -Status $row.Status -Ver $row.Ver -Inst $row.Inst -Work $row.Work -WorkState $row.WorkState -Remote $row.Remote
         if ($i -eq $Selected) {
             Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)$text$($_C.Reset)$($_C.EraseLn)"
         }
@@ -1183,7 +1234,8 @@ function Get-MenuBudgetRows {
 
     foreach ($group in (@($Surfaces) | Where-Object { -not [string]::IsNullOrWhiteSpace($_.BudgetGroup) } | Group-Object BudgetGroup | Sort-Object Name)) {
         $isRootGroup = $group.Name -like '*.Root'
-        $max = ($group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum).Maximum
+        $measure = $group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum
+        $max = try { $measure.Maximum } catch { $null }
         $count = if ($isRootGroup) { @($group.Group).Count } elseif ($null -eq $max) { 0 } else { [int]$max }
         $remaining = 16 - $count
         $status = if ($isRootGroup) { 'Tracked' } elseif ($count -gt 16) { 'Over limit' } elseif ($count -ge 14) { 'Near limit' } else { 'OK' }
