@@ -36,6 +36,8 @@ $Script:LastManagerNavigationAt = [DateTime]::MinValue
 $Script:LastManagerWindowWidth = 0
 $Script:LastManagerWindowHeight = 0
 $Script:ManagerMenuSnapshot = $null
+$Script:LastManagerOperationSucceeded = $true
+$Script:ManagerExitRequested = $false
 
 function Get-BlueprintModulePath {
     $candidates = @(
@@ -704,11 +706,45 @@ function Invoke-Installer {
     return [int]$exitCode
 }
 
+function Start-ManagerRelaunch {
+    $scriptPath = if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) { $PSCommandPath } else { Join-Path $PSScriptRoot 'SystemToolsManager.ps1' }
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        Write-Host "Manager relaunch skipped: script not found at $scriptPath" -ForegroundColor Yellow
+        return $false
+    }
+
+    $wtCommand = Get-Command wt.exe -ErrorAction SilentlyContinue
+    if ($null -ne $wtCommand) {
+        Start-Process -FilePath $wtCommand.Source -ArgumentList @(
+            '-w', 'new',
+            'nt',
+            '--title', 'SystemTools-Manager',
+            'pwsh.exe',
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', $scriptPath
+        ) | Out-Null
+        return $true
+    }
+
+    Start-Process -FilePath 'pwsh.exe' -ArgumentList @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $scriptPath
+    ) | Out-Null
+    return $true
+}
+
 function Invoke-ToolUpdate {
     param([Parameter(Mandatory)][string]$Name)
 
+    $Script:LastManagerOperationSucceeded = $false
     $tool = Get-ToolByName -Name $Name
     $state = Get-ToolState -Tool $tool
+    if (-not $state.HasInstaller) {
+        Write-Host "Skipping $($tool.Label): monitored surface without an installed package." -ForegroundColor Yellow
+        return
+    }
     if (-not $state.Installed) {
         Write-Host "Skipping $($tool.Label): not installed." -ForegroundColor Yellow
         return
@@ -722,6 +758,7 @@ function Invoke-ToolUpdate {
         return
     }
     Write-Host "$($tool.Label) update completed." -ForegroundColor Green
+    $Script:LastManagerOperationSucceeded = $true
 }
 
 function Invoke-ToolGitCloneInstall {
@@ -757,8 +794,13 @@ function Invoke-ToolInstallOrRepair {
         [switch]$Repair
     )
 
+    $Script:LastManagerOperationSucceeded = $false
     $tool = Get-ToolByName -Name $Name
     $state = Get-ToolState -Tool $tool
+    if (-not $state.HasInstaller) {
+        Write-Host "$($tool.Label) is a monitored surface without an installed package." -ForegroundColor Yellow
+        return
+    }
     $sourceRoot = Resolve-ToolRepoPath -Tool $tool
     $mode = if ($state.Installed) { 'Update' } else { 'Install' }
 
@@ -786,30 +828,46 @@ function Invoke-ToolInstallOrRepair {
     }
 
     Write-Host "$($tool.Label) install/repair completed." -ForegroundColor Green
+    $Script:LastManagerOperationSucceeded = $true
 }
 
 function Invoke-InstallAll {
     Write-Title
+    $allOk = $true
     foreach ($tool in ($Script:Tools | Sort-Object { if ($_.Role -eq 'host') { 0 } else { 1 } }, Order)) {
+        $state = Get-ToolState -Tool $tool
+        if (-not $state.HasInstaller) { continue }
         Invoke-ToolInstallOrRepair -Name $tool.Name
+        if (-not $Script:LastManagerOperationSucceeded) { $allOk = $false }
     }
     Invoke-RefreshShell
+    $Script:LastManagerOperationSucceeded = $allOk
 }
 
 function Invoke-RepairAll {
     Write-Title
+    $allOk = $true
     foreach ($tool in ($Script:Tools | Sort-Object { if ($_.Role -eq 'host') { 0 } else { 1 } }, Order)) {
+        $state = Get-ToolState -Tool $tool
+        if (-not $state.HasInstaller) { continue }
         Invoke-ToolInstallOrRepair -Name $tool.Name -Repair
+        if (-not $Script:LastManagerOperationSucceeded) { $allOk = $false }
     }
     Invoke-RefreshShell
+    $Script:LastManagerOperationSucceeded = $allOk
 }
 
 function Invoke-UpdateAll {
     Write-Title
+    $allOk = $true
     foreach ($tool in ($Script:Tools | Sort-Object { if ($_.Role -eq 'host') { 1 } else { 0 } }, Order)) {
+        $state = Get-ToolState -Tool $tool
+        if (-not $state.HasInstaller -or -not $state.Installed) { continue }
         Invoke-ToolUpdate -Name $tool.Name
+        if (-not $Script:LastManagerOperationSucceeded) { $allOk = $false }
     }
     Invoke-RefreshShell
+    $Script:LastManagerOperationSucceeded = $allOk
 }
 
 function Invoke-RefreshShell {
@@ -1149,7 +1207,7 @@ function Write-ManagerMenuBlock {
     }
 
     Write-Host "$_E[K"
-    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    1-9/R/Q = shortcut    Esc = exit" -Width ([Math]::Max(1, $width - 3))
+    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    1/2/R/Q = shortcut    Esc = exit" -Width ([Math]::Max(1, $width - 3))
     Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
     Write-Host "$_E[J" -NoNewline
 }
@@ -1198,9 +1256,11 @@ function Wait-ManagerBackKey {
 function Invoke-ManagerExternalAction {
     param(
         [Parameter(Mandatory)][scriptblock]$Operation,
-        [switch]$NoPause
+        [switch]$NoPause,
+        [switch]$RelaunchManagerAfter
     )
 
+    $Script:LastManagerOperationSucceeded = $false
     Restore-TuiHost
     try {
         & $Operation
@@ -1208,6 +1268,13 @@ function Invoke-ManagerExternalAction {
     }
     finally {
         Initialize-TuiHost
+    }
+
+    if ($RelaunchManagerAfter -and $Script:LastManagerOperationSucceeded) {
+        if (Start-ManagerRelaunch) {
+            $Script:ManagerExitRequested = $true
+            return
+        }
     }
 
     Show-ManagerLoading
@@ -1464,14 +1531,16 @@ function Show-ToolsSummary {
             $char = ([string]$key.KeyChar).ToUpperInvariant()
             $hasCtrl = ([string]$key.ControlKeyState) -match 'Ctrl'
             if ($charCode -eq 21 -or ($hasCtrl -and [string]$key.Key -eq 'U')) {
-                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-UpdateAll }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -Operation { Invoke-UpdateAll }
+                if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
                 $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
                 continue
             }
             if ($charCode -eq 9 -or ($hasCtrl -and [string]$key.Key -eq 'I')) {
-                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-InstallAll }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -Operation { Invoke-InstallAll }
+                if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
                 $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
@@ -1479,7 +1548,9 @@ function Show-ToolsSummary {
             }
             if ($char -eq 'U') {
                 $toolName = [string]$Snapshot.States[$selected].Name
-                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-ToolUpdate -Name $toolName }
+                $isSelfAction = $toolName -eq 'SystemTools'
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -Operation { Invoke-ToolUpdate -Name $toolName }
+                if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
                 $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
@@ -1487,7 +1558,9 @@ function Show-ToolsSummary {
             }
             if ($char -eq 'I') {
                 $toolName = [string]$Snapshot.States[$selected].Name
-                Invoke-ManagerExternalAction -NoPause:$NoPause -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                $isSelfAction = $toolName -eq 'SystemTools'
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
                 $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
@@ -1801,10 +1874,6 @@ function Show-Menu {
             $items = @(
                 [pscustomobject]@{ Key = '1'; Label = 'Tools Summary'; Action = 'ToolsSummary'; Color = $_C.Info },
                 [pscustomobject]@{ Key = '2'; Label = 'Menu Structure'; Action = 'MenuStructure'; Color = $_C.OK },
-                [pscustomobject]@{ Key = '3'; Label = 'Update selected tool'; Action = 'UpdateTool'; Color = $_C.Warn },
-                [pscustomobject]@{ Key = '4'; Label = 'Update all installed tools'; Action = 'UpdateAll'; Color = $_C.Warn },
-                [pscustomobject]@{ Key = '5'; Label = 'Install / repair selected tool'; Action = 'RepairTool'; Color = $_C.Accent },
-                [pscustomobject]@{ Key = '6'; Label = 'Install / repair all tools'; Action = 'InstallAll'; Color = $_C.Accent },
                 [pscustomobject]@{ Key = 'R'; Label = 'Refresh status snapshot'; Action = 'Refresh'; Color = $_C.OK },
                 [pscustomobject]@{ Key = 'Q'; Label = 'Exit'; Action = 'Quit'; Color = $_C.Dim }
             )
@@ -1812,49 +1881,10 @@ function Show-Menu {
             $choice = Read-ManagerMenuSelection -Items $items -Snapshot $snapshot
 
             switch ($choice) {
-                'InstallAll' {
-                    Restore-TuiHost
-                    Invoke-InstallAll
-                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                    Initialize-TuiHost
-                    Show-ManagerLoading
-                    $snapshot = New-ManagerMenuSnapshot
-                    continue menuLoop
-                }
-                'UpdateAll' {
-                    Restore-TuiHost
-                    Invoke-UpdateAll
-                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                    Initialize-TuiHost
-                    Show-ManagerLoading
-                    $snapshot = New-ManagerMenuSnapshot
-                    continue menuLoop
-                }
-                'RepairTool' {
-                    $tool = Read-ToolChoice -Prompt 'Install / repair which tool?'
-                    if (-not $tool) { continue menuLoop }
-                    Restore-TuiHost
-                    Invoke-ToolInstallOrRepair -Name $tool.Name -Repair
-                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                    Initialize-TuiHost
-                    Show-ManagerLoading
-                    $snapshot = New-ManagerMenuSnapshot
-                    continue menuLoop
-                }
-                'UpdateTool' {
-                    $tool = Read-ToolChoice -Prompt 'Update which tool?'
-                    if (-not $tool) { continue menuLoop }
-                    Restore-TuiHost
-                    Invoke-ToolUpdate -Name $tool.Name
-                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                    Initialize-TuiHost
-                    Show-ManagerLoading
-                    $snapshot = New-ManagerMenuSnapshot
-                    continue menuLoop
-                }
                 'ToolsSummary' {
                     $Script:ManagerMenuSnapshot = $snapshot
                     Show-ToolsSummary -Snapshot $snapshot -NoPause:$NoPause
+                    if ($Script:ManagerExitRequested) { return }
                     if ($Script:ManagerMenuSnapshot) { $snapshot = $Script:ManagerMenuSnapshot }
                     continue menuLoop
                 }

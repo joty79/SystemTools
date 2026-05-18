@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Manager self-update must relaunch)
+
+- Date: 2026-05-18
+- Problem: Updating or repairing `SystemTools` from inside `SystemToolsManager.ps1` can replace the manager files while the old manager process is still running.
+- Root cause: `SystemToolsManager.ps1` is part of the `SystemTools` package, so refreshing the host package differs from refreshing child tools; the active PowerShell process keeps the old script in memory until it exits.
+- Guardrail/rule: If `Tools Summary` successfully updates or installs/repairs the `SystemTools` host, start a fresh WT manager process and exit the old interactive menu. Child tool updates can refresh the snapshot without relaunching the manager.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; read-only `Status`, `Budgets`, and `MenuStructure` smokes passed; `git diff --check` passed. Self-update relaunch was code-reviewed but not executed because it intentionally starts a new WT manager process after install/update.
+
 ### Entry - 2026-05-18 (Tools Summary is the manager action hub)
 
 - Date: 2026-05-18
