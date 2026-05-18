@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.38**: Removed `Refresh status snapshot` from the main menu and kept refresh as a `Tools Summary` footer shortcut. Standardized interactive footer coloring so action keys are visually distinct from descriptions, arrows render white, `Enter` renders green, and `Esc` renders red.
 - **Version 1.0.37**: Removed duplicate update/install actions from the main interactive menu now that `Tools Summary` owns those shortcuts. Updating or installing/repairing the `SystemTools` host from `Tools Summary` now relaunches the manager in a fresh WT process after a successful operation so the running tool manager is no longer the stale pre-update script.
 - **Version 1.0.36**: Applied the resize-safe full-frame renderer to `Menu Structure` and turned `Tools Summary` into the main action hub with `U` update selected, `Ctrl+U` update all installed, `I` install/repair selected, `Ctrl+I` install/repair all, and `R` refresh shortcuts.
 - **Version 1.0.35**: Hardened the interactive manager renderer for aggressive Windows Terminal resizing by switching menu-style screens to synchronized full-frame redraws, polling for resize events while waiting for keys, and locking the console buffer height to the active window height to prevent scrollback tearing.

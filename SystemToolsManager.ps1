@@ -1091,7 +1091,7 @@ function Write-ManagerMenuHeader {
     Write-Host "  $($_C.H2)Managed:$($_C.Reset) $($_C.White)$($Snapshot.TotalCount)$($_C.Reset) | $($_C.H2)Installed:$($_C.Reset) $($_C.White)$($Snapshot.InstalledCount)$($_C.Reset) | $($_C.H2)Menu OK:$($_C.Reset) $($_C.OK)$($Snapshot.MenuOkCount)$($_C.Reset) | $($_C.H2)Standalone:$($_C.Reset) $($_C.Info)$($Snapshot.StandaloneCount)$($_C.Reset)$($_C.EraseLn)"
     Write-Host "  $($_C.H2)SystemTools:$($_C.Reset) $($_C.White)$($Snapshot.SystemToolsCount)$($_C.Reset) | $($_C.H2)Workspace current:$($_C.Reset) $($_C.OK)$($Snapshot.WorkspaceCurrentCount)$($_C.Reset)/$($Snapshot.TotalCount) | $($_C.H2)Dirty-source installs:$($_C.Reset) $($_C.Warn)$($Snapshot.DirtySourceCount)$($_C.Reset)$($_C.EraseLn)"
     Write-Host "  $($_C.H2)Checked:$($_C.Reset) $($_C.Dim)$('{0:HH:mm:ss}' -f $Snapshot.CheckedAt)$($_C.Reset) | $($_C.H2)Issues:$($_C.Reset) $($_C.Dim)$($Snapshot.IssueSummary)$($_C.Reset)$($_C.EraseLn)"
-    Write-Host "  $($_C.Dim)R refreshes the snapshot. Arrow keys do not rescan registry or git state.$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)Open Tools Summary for update/install shortcuts. Arrow keys do not rescan registry or git state.$($_C.Reset)$($_C.EraseLn)"
 }
 
 function Read-ManagerKey {
@@ -1182,6 +1182,81 @@ function Move-ManagerSelection {
     return 0
 }
 
+function Write-ManagerShortcutSegments {
+    param(
+        [Parameter(Mandatory)][object[]]$Segments,
+        [Parameter(Mandatory)][int]$Width
+    )
+
+    $plain = ($Segments | ForEach-Object { [string]$_.Text }) -join ''
+    if ($plain.Length -gt $Width) {
+        $remaining = $Width
+        Write-Host '  ' -NoNewline
+        foreach ($segment in $Segments) {
+            if ($remaining -le 0) { break }
+            $text = Limit-ManagerText -Value $segment.Text -Width $remaining
+            Write-Host "$($segment.Color)$text$($_C.Reset)" -NoNewline
+            $remaining -= $text.Length
+        }
+        Write-Host "$($_C.EraseLn)"
+        return
+    }
+
+    Write-Host '  ' -NoNewline
+    foreach ($segment in $Segments) {
+        Write-Host "$($segment.Color)$($segment.Text)$($_C.Reset)" -NoNewline
+    }
+    Write-Host "$($_C.EraseLn)"
+}
+
+function New-ManagerShortcutSegment {
+    param(
+        [Parameter(Mandatory)][string]$Text,
+        [Parameter(Mandatory)][string]$Color
+    )
+
+    [pscustomobject]@{ Text = $Text; Color = $Color }
+}
+
+function Write-ManagerNavFooter {
+    param(
+        [Parameter(Mandatory)][int]$Width,
+        [ValidateSet('Main','Picker','Back')][string]$Mode = 'Main'
+    )
+
+    $segments = @(
+        New-ManagerShortcutSegment -Text "$([char]0x2191)$([char]0x2193)" -Color $_C.White
+        New-ManagerShortcutSegment -Text ' navigate    ' -Color $_C.Dim
+        New-ManagerShortcutSegment -Text 'Enter' -Color $_C.OK
+        New-ManagerShortcutSegment -Text ' = select    ' -Color $_C.Dim
+    )
+
+    if ($Mode -eq 'Main') {
+        $segments += @(
+            New-ManagerShortcutSegment -Text '1/2/Q' -Color $_C.White
+            New-ManagerShortcutSegment -Text ' = shortcut    ' -Color $_C.Dim
+            New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
+            New-ManagerShortcutSegment -Text ' = exit' -Color $_C.Dim
+        )
+    }
+    elseif ($Mode -eq 'Picker') {
+        $segments += @(
+            New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
+            New-ManagerShortcutSegment -Text ' = cancel' -Color $_C.Dim
+        )
+    }
+    else {
+        $segments = @(
+            New-ManagerShortcutSegment -Text 'Enter' -Color $_C.OK
+            New-ManagerShortcutSegment -Text ' / ' -Color $_C.Dim
+            New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
+            New-ManagerShortcutSegment -Text ' = back' -Color $_C.Dim
+        )
+    }
+
+    Write-ManagerShortcutSegments -Segments $segments -Width ([Math]::Max(1, $Width - 3))
+}
+
 function Write-ManagerMenuBlock {
     param(
         [Parameter(Mandatory)][object[]]$Items,
@@ -1207,8 +1282,7 @@ function Write-ManagerMenuBlock {
     }
 
     Write-Host "$_E[K"
-    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    1/2/R/Q = shortcut    Esc = exit" -Width ([Math]::Max(1, $width - 3))
-    Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
+    Write-ManagerNavFooter -Width $width -Mode Main
     Write-Host "$_E[J" -NoNewline
 }
 
@@ -1236,8 +1310,7 @@ function Write-ManagerToolSelectionBlock {
     }
 
     Write-Host "$_E[K"
-    $help = Limit-ManagerText -Value "$([char]0x2191)$([char]0x2193) navigate    Enter = select    Esc = cancel" -Width ([Math]::Max(1, $width - 3))
-    Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
+    Write-ManagerNavFooter -Width $width -Mode Picker
     Write-Host "$_E[J" -NoNewline
 }
 
@@ -1417,25 +1490,46 @@ function Write-ManagerShortcutFooter {
     param([Parameter(Mandatory)][int]$Width)
 
     $wide = $Width -ge 92
-    $actionText = if ($wide) {
-        'U update selected   ^U update all   I install/repair selected   ^I install/repair all   R refresh'
+    $actions = if ($wide) {
+        @(
+            @('U', ' update selected   ')
+            @('^U', ' update all   ')
+            @('I', ' install/repair selected   ')
+            @('^I', ' install/repair all   ')
+            @('R', ' refresh')
+        )
     }
     elseif ($Width -ge 64) {
-        'U update   ^U all   I repair   ^I repair all   R refresh'
+        @(
+            @('U', ' update   ')
+            @('^U', ' all   ')
+            @('I', ' repair   ')
+            @('^I', ' repair all   ')
+            @('R', ' refresh')
+        )
     }
     else {
-        'U upd   ^U all   I rep   ^I all   R ref'
+        @(
+            @('U', ' upd   ')
+            @('^U', ' all   ')
+            @('I', ' rep   ')
+            @('^I', ' all   ')
+            @('R', ' ref')
+        )
     }
 
-    $navText = if ($Width -ge 72) {
-        "$([char]0x2191)$([char]0x2193) move   Esc = back"
-    }
-    else {
-        "$([char]0x2191)$([char]0x2193) move   Esc back"
+    $actionSegments = foreach ($action in $actions) {
+        New-ManagerShortcutSegment -Text $action[0] -Color $_C.Warn
+        New-ManagerShortcutSegment -Text $action[1] -Color $_C.Dim
     }
 
-    Write-Host "  $($_C.Warn)$(Limit-ManagerText -Value $actionText -Width ([Math]::Max(1, $Width - 3)))$($_C.Reset)$($_C.EraseLn)"
-    Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $navText -Width ([Math]::Max(1, $Width - 3)))$($_C.Reset)$($_C.EraseLn)"
+    Write-ManagerShortcutSegments -Segments @($actionSegments) -Width ([Math]::Max(1, $Width - 3))
+    Write-ManagerShortcutSegments -Segments @(
+        New-ManagerShortcutSegment -Text "$([char]0x2191)$([char]0x2193)" -Color $_C.White
+        New-ManagerShortcutSegment -Text ' move   ' -Color $_C.Dim
+        New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
+        New-ManagerShortcutSegment -Text ' = back' -Color $_C.Dim
+    ) -Width ([Math]::Max(1, $Width - 3))
 }
 
 function Write-ToolsSummaryBlock {
@@ -1739,9 +1833,8 @@ function Show-MenuStructure {
             Invoke-ManagerFrame {
                 Write-MenuStructureContent -Snapshot $Snapshot
                 $size = Get-ManagerWindowSize
-                $help = Limit-ManagerText -Value 'Esc/Enter = back   resize-safe full redraw' -Width ([Math]::Max(1, $size.Width - 3))
                 Write-Host ''
-                Write-Host "  $($_C.Dim)$help$($_C.Reset)$($_C.EraseLn)"
+                Write-ManagerNavFooter -Width $size.Width -Mode Back
             }
 
             $key = Read-ManagerKey
@@ -1874,7 +1967,6 @@ function Show-Menu {
             $items = @(
                 [pscustomobject]@{ Key = '1'; Label = 'Tools Summary'; Action = 'ToolsSummary'; Color = $_C.Info },
                 [pscustomobject]@{ Key = '2'; Label = 'Menu Structure'; Action = 'MenuStructure'; Color = $_C.OK },
-                [pscustomobject]@{ Key = 'R'; Label = 'Refresh status snapshot'; Action = 'Refresh'; Color = $_C.OK },
                 [pscustomobject]@{ Key = 'Q'; Label = 'Exit'; Action = 'Quit'; Color = $_C.Dim }
             )
 
@@ -1890,11 +1982,6 @@ function Show-Menu {
                 }
                 'MenuStructure' {
                     Show-MenuStructure -Snapshot $snapshot
-                    continue menuLoop
-                }
-                'Refresh' {
-                    Show-ManagerLoading
-                    $snapshot = New-ManagerMenuSnapshot
                     continue menuLoop
                 }
                 'Quit' { return }

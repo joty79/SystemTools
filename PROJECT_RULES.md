@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Manager shortcut footer color semantics)
+
+- Date: 2026-05-18
+- Problem: Footer shortcuts were hard to scan because the key and its description used the same color, and main-menu refresh duplicated the `Tools Summary` refresh hotkey.
+- Root cause: The manager rendered shortcut help as one dim string instead of semantic key/description segments, and `Refresh status snapshot` remained as a main-menu item after `Tools Summary` became the action hub.
+- Guardrail/rule: In interactive TUI footers, render the actual key in a stronger semantic color and the description in dim text. Use white arrows for navigation, green `Enter`, red `Esc`, and keep refresh as a footer hotkey in `Tools Summary` rather than a main-menu action.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; read-only `Status` and `MenuStructure` smokes passed; `git diff --check` passed. Interactive footer colors still need live WT visual confirmation.
+
 ### Entry - 2026-05-18 (Manager self-update must relaunch)
 
 - Date: 2026-05-18
