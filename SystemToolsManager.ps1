@@ -880,8 +880,37 @@ function New-ManagerMenuSnapshot {
 }
 
 function Get-ManagerUiWidth {
-    try { [Math]::Min(100, $Host.UI.RawUI.WindowSize.Width - 2) }
+    try {
+        $windowWidth = [int]$Host.UI.RawUI.WindowSize.Width
+        if ($windowWidth -le 0) { return 80 }
+        return [Math]::Max(40, [Math]::Min(100, $windowWidth - 2))
+    }
     catch { 80 }
+}
+
+function Get-ManagerWindowSize {
+    try {
+        [pscustomobject]@{
+            Width = [Math]::Max(40, [int]$Host.UI.RawUI.WindowSize.Width)
+            Height = [Math]::Max(10, [int]$Host.UI.RawUI.WindowSize.Height)
+        }
+    }
+    catch {
+        [pscustomobject]@{ Width = 100; Height = 30 }
+    }
+}
+
+function Limit-ManagerText {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory)][int]$Width
+    )
+
+    $text = if ($null -eq $Value) { '' } else { [string]$Value }
+    if ($Width -le 0) { return '' }
+    if ($text.Length -le $Width) { return $text }
+    if ($Width -eq 1) { return $text.Substring(0, 1) }
+    return $text.Substring(0, $Width - 1) + '~'
 }
 
 function Get-ManagerAppVersion {
@@ -906,13 +935,14 @@ function Write-ManagerBanner {
     )
 
     $width = Get-ManagerUiWidth
+    $innerWidth = [Math]::Max(1, $width - 2)
     $border = [string]::new([char]0x2550, ($width - 2))
-    $titleText = " Windows Tools Manager v$(Get-ManagerAppVersion)"
-    $subText = ' Tools + Menu Structure + Updates'
-    $statusText = " Status : $StatusLabel"
-    $titlePad = [Math]::Max(0, $width - 2 - $titleText.Length)
-    $subPad = [Math]::Max(0, $width - 2 - $subText.Length)
-    $statusPad = [Math]::Max(0, $width - 2 - $statusText.Length)
+    $titleText = Limit-ManagerText -Value " Windows Tools Manager v$(Get-ManagerAppVersion)" -Width $innerWidth
+    $subText = Limit-ManagerText -Value ' Tools + Menu Structure + Updates' -Width $innerWidth
+    $statusText = Limit-ManagerText -Value " Status : $StatusLabel" -Width $innerWidth
+    $titlePad = [Math]::Max(0, $innerWidth - $titleText.Length)
+    $subPad = [Math]::Max(0, $innerWidth - $subText.Length)
+    $statusPad = [Math]::Max(0, $innerWidth - $statusText.Length)
 
     Write-Host ''
     Write-Host "$($_C.H1)$([char]0x2554)$border$([char]0x2557)$($_C.Reset)"
@@ -1126,32 +1156,105 @@ function Format-ManagerCell {
     return $text.PadRight($Width)
 }
 
-function New-ManagerToolsSummaryLine {
+function Get-ManagerToolsSummaryColumns {
+    param([Parameter(Mandatory)][int]$ConsoleWidth)
+
+    if ($ConsoleWidth -ge 136) {
+        return @(
+            [pscustomobject]@{ Key = 'Tool'; Header = 'Tool'; Width = 28 }
+            [pscustomobject]@{ Key = 'Scope'; Header = 'Scope'; Width = 12 }
+            [pscustomobject]@{ Key = 'Installed'; Header = 'In'; Width = 3 }
+            [pscustomobject]@{ Key = 'Menu'; Header = 'Menu'; Width = 7 }
+            [pscustomobject]@{ Key = 'Status'; Header = 'Status'; Width = 16 }
+            [pscustomobject]@{ Key = 'Ver'; Header = 'Ver'; Width = 7 }
+            [pscustomobject]@{ Key = 'Inst'; Header = 'Inst'; Width = 8 }
+            [pscustomobject]@{ Key = 'Work'; Header = 'Work'; Width = 8 }
+            [pscustomobject]@{ Key = 'WorkState'; Header = 'WorkState'; Width = 16 }
+            [pscustomobject]@{ Key = 'Remote'; Header = 'Remote'; Width = 8 }
+        )
+    }
+
+    if ($ConsoleWidth -ge 112) {
+        return @(
+            [pscustomobject]@{ Key = 'Tool'; Header = 'Tool'; Width = 28 }
+            [pscustomobject]@{ Key = 'Scope'; Header = 'Scope'; Width = 12 }
+            [pscustomobject]@{ Key = 'Installed'; Header = 'In'; Width = 3 }
+            [pscustomobject]@{ Key = 'Menu'; Header = 'Menu'; Width = 4 }
+            [pscustomobject]@{ Key = 'Status'; Header = 'Status'; Width = 16 }
+            [pscustomobject]@{ Key = 'Ver'; Header = 'Ver'; Width = 7 }
+            [pscustomobject]@{ Key = 'WorkState'; Header = 'WorkState'; Width = 16 }
+            [pscustomobject]@{ Key = 'Remote'; Header = 'Remote'; Width = 8 }
+        )
+    }
+
+    if ($ConsoleWidth -ge 86) {
+        return @(
+            [pscustomobject]@{ Key = 'Tool'; Header = 'Tool'; Width = 24 }
+            [pscustomobject]@{ Key = 'Scope'; Header = 'Scope'; Width = 11 }
+            [pscustomobject]@{ Key = 'Status'; Header = 'Status'; Width = 14 }
+            [pscustomobject]@{ Key = 'Ver'; Header = 'Ver'; Width = 7 }
+            [pscustomobject]@{ Key = 'WorkState'; Header = 'WorkState'; Width = 12 }
+        )
+    }
+
+    if ($ConsoleWidth -ge 60) {
+        return @(
+            [pscustomobject]@{ Key = 'Tool'; Header = 'Tool'; Width = 24 }
+            [pscustomobject]@{ Key = 'Status'; Header = 'Status'; Width = 14 }
+            [pscustomobject]@{ Key = 'WorkState'; Header = 'WorkState'; Width = 12 }
+        )
+    }
+
+    $toolWidth = [Math]::Max(12, [Math]::Min(22, $ConsoleWidth - 22))
+    $statusWidth = [Math]::Max(8, $ConsoleWidth - $toolWidth - 6)
+    return @(
+        [pscustomobject]@{ Key = 'Tool'; Header = 'Tool'; Width = $toolWidth }
+        [pscustomobject]@{ Key = 'Status'; Header = 'Status'; Width = $statusWidth }
+    )
+}
+
+function Get-ManagerToolsSummaryValue {
     param(
-        [Parameter(Mandatory)]$Tool,
-        [Parameter(Mandatory)]$Scope,
-        [Parameter(Mandatory)]$Installed,
-        [Parameter(Mandatory)]$Menu,
-        [Parameter(Mandatory)]$Status,
-        [Parameter(Mandatory)]$Ver,
-        [Parameter(Mandatory)]$Inst,
-        [Parameter(Mandatory)]$Work,
-        [Parameter(Mandatory)]$WorkState,
-        [Parameter(Mandatory)]$Remote
+        [Parameter(Mandatory)]$Row,
+        [Parameter(Mandatory)][string]$Key
     )
 
-    $cells = @(
-        Format-ManagerCell -Value $Tool -Width 28
-        Format-ManagerCell -Value $Scope -Width 12
-        Format-ManagerCell -Value $Installed -Width 3
-        Format-ManagerCell -Value $Menu -Width 7
-        Format-ManagerCell -Value $Status -Width 16
-        Format-ManagerCell -Value $Ver -Width 7
-        Format-ManagerCell -Value $Inst -Width 8
-        Format-ManagerCell -Value $Work -Width 8
-        Format-ManagerCell -Value $WorkState -Width 16
-        Format-ManagerCell -Value $Remote -Width 8
+    switch ($Key) {
+        'Tool' { return $Row.Tool }
+        'Scope' { return $Row.Scope }
+        'Installed' { return $Row.Installed }
+        'Menu' { return $Row.Menu }
+        'Status' { return $Row.Status }
+        'Ver' { return $Row.Ver }
+        'Inst' { return $Row.Inst }
+        'Work' { return $Row.Work }
+        'WorkState' { return $Row.WorkState }
+        'Remote' { return $Row.Remote }
+        default { return '' }
+    }
+}
+
+function New-ManagerToolsSummaryLine {
+    param(
+        [Parameter(Mandatory)][object[]]$Columns,
+        $Row = $null,
+        [switch]$Header,
+        [switch]$Separator
     )
+
+    $cells = foreach ($column in $Columns) {
+        $value = if ($Separator) {
+            [string]::new([char]0x002D, [Math]::Min([int]$column.Width, [Math]::Max(2, ([string]$column.Header).Length)))
+        }
+        elseif ($Header) {
+            $column.Header
+        }
+        else {
+            Get-ManagerToolsSummaryValue -Row $Row -Key $column.Key
+        }
+
+        Format-ManagerCell -Value $value -Width ([int]$column.Width)
+    }
 
     return '  ' + ($cells -join '  ')
 }
@@ -1163,24 +1266,42 @@ function Write-ToolsSummaryBlock {
         [Parameter(Mandatory)][int]$Top
     )
 
+    $size = Get-ManagerWindowSize
     try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
     Write-ManagerSection -Title 'Tools Summary'
-    Write-Host (New-ManagerToolsSummaryLine -Tool 'Tool' -Scope 'Scope' -Installed 'In' -Menu 'Menu' -Status 'Status' -Ver 'Ver' -Inst 'Inst' -Work 'Work' -WorkState 'WorkState' -Remote 'Remote') -ForegroundColor Green
-    Write-Host (New-ManagerToolsSummaryLine -Tool '----' -Scope '-----' -Installed '--' -Menu '----' -Status '------' -Ver '---' -Inst '----' -Work '----' -WorkState '---------' -Remote '------') -ForegroundColor Green
+    $columns = @(Get-ManagerToolsSummaryColumns -ConsoleWidth $size.Width)
+    $isCompact = $columns.Count -le 3
+    if ($size.Width -lt 136) {
+        Write-Host "  $($_C.Dim)Compact view for $($size.Width)-column terminal. Maximize or widen WT to see all commit columns.$($_C.Reset)$($_C.EraseLn)"
+    }
+    Write-Host (New-ManagerToolsSummaryLine -Columns $columns -Header) -ForegroundColor Green
+    Write-Host (New-ManagerToolsSummaryLine -Columns $columns -Separator) -ForegroundColor Green
 
     for ($i = 0; $i -lt $Rows.Count; $i++) {
         $row = $Rows[$i]
-        $text = New-ManagerToolsSummaryLine -Tool $row.Tool -Scope $row.Scope -Installed $row.Installed -Menu $row.Menu -Status $row.Status -Ver $row.Ver -Inst $row.Inst -Work $row.Work -WorkState $row.WorkState -Remote $row.Remote
+        $text = New-ManagerToolsSummaryLine -Columns $columns -Row $row
         if ($i -eq $Selected) {
             Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)$text$($_C.Reset)$($_C.EraseLn)"
         }
         else {
             Write-Host "$((Get-ManagerRowColor -Row $row))$text$($_C.Reset)$($_C.EraseLn)"
         }
+
+        if ($isCompact) {
+            $detail = "    scope $($row.Scope) | menu $($row.Menu) | ver $($row.Ver) | work $($row.Work) | remote $($row.Remote)"
+            $detail = Limit-ManagerText -Value $detail -Width ([Math]::Max(1, $size.Width - 1))
+            Write-Host "$($_C.Dim)$detail$($_C.Reset)$($_C.EraseLn)"
+        }
     }
 
     Write-Host ''
-    Write-Host "  $($_C.Dim)Inst = installed commit; Work = workspace HEAD (* dirty); Remote = GitHub branch HEAD.$($_C.Reset)$($_C.EraseLn)"
+    $legend = if ($size.Width -ge 100) {
+        'Inst = installed commit; Work = workspace HEAD (* dirty); Remote = GitHub branch HEAD.'
+    }
+    else {
+        'Wide view adds Inst/Work/Remote commit columns.'
+    }
+    Write-Host "  $($_C.Dim)$(Limit-ManagerText -Value $legend -Width ([Math]::Max(1, $size.Width - 3)))$($_C.Reset)$($_C.EraseLn)"
     Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) move    Enter = details    Esc = back$($_C.Reset)$($_C.EraseLn)"
     Write-Host "$_E[J" -NoNewline
 }
@@ -1195,11 +1316,20 @@ function Show-ToolsSummary {
     try { Clear-Host } catch {}
     Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
     try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
+    $lastSize = Get-ManagerWindowSize
     try { [Console]::CursorVisible = $false } catch {}
     Reset-ManagerNavigationRepeat
 
     try {
         while ($true) {
+            $currentSize = Get-ManagerWindowSize
+            if ($currentSize.Width -ne $lastSize.Width -or $currentSize.Height -ne $lastSize.Height) {
+                try { Clear-Host } catch {}
+                Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
+                try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
+                $lastSize = $currentSize
+            }
+
             Write-ToolsSummaryBlock -Rows $rows -Selected $selected -Top $top
             $key = Read-ManagerKey
             $direction = Get-ManagerNavigationDirection -Key $key
@@ -1220,6 +1350,7 @@ function Show-ToolsSummary {
                 try { Clear-Host } catch {}
                 Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
                 try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
+                $lastSize = Get-ManagerWindowSize
                 continue
             }
         }

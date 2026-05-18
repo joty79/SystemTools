@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-18 (Manager Tools Summary must be width-safe)
+
+- Date: 2026-05-18
+- Problem: Resizing Windows Terminal broke the `Tools Summary` screen: wide rows wrapped in narrow windows, then arrow-key repaint drew a second table over stale wrapped lines.
+- Root cause: The interactive renderer used a fixed wide table and partial repaint with a cached cursor top, without detecting terminal resize or switching layouts when the current width could not fit all columns.
+- Guardrail/rule: `SystemToolsManager.ps1` interactive tables must be responsive to `RawUI.WindowSize`: never print visible lines wider than the current terminal, switch to reduced/compact columns below wide-table thresholds, and full-clear/redraw after any terminal width/height change.
+- Files affected: `SystemToolsManager.ps1`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; read-only `Status`, `Budgets`, and `MenuStructure` smokes passed. Interactive resize behavior still needs real WT verification by user.
+
 ### Entry - 2026-02-27
 
 - Date: 2026-02-27
