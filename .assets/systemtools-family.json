@@ -10,6 +10,44 @@
       "repo_folder": "SystemTools",
       "role": "host",
       "order": 10,
+      "scope": "SystemTools",
+      "surfaces": [
+        {
+          "name": "System Tools root",
+          "kind": "shared_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools",
+          "budget_group": "SystemTools.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Folder background System Tools menu",
+          "kind": "shared_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools",
+          "budget_group": "Directory.Background.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Desktop System Tools menu",
+          "kind": "shared_cascade",
+          "root_key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SystemTools",
+          "budget_group": "DesktopBackground.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "File System Tools menu",
+          "kind": "shared_cascade",
+          "root_key": "HKCU\\Software\\Classes\\*\\shell\\SystemTools",
+          "budget_group": "File.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Windows category",
+          "kind": "shared_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows",
+          "budget_group": "SystemTools.Windows.Folder",
+          "visibility": "normal"
+        }
+      ],
       "verify_registry_keys": [
         "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\z_ToolManager",
         "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\PathManager",
@@ -25,6 +63,7 @@
       "repo_folder": "TakeOwnership",
       "role": "child",
       "order": 20,
+      "scope": "SystemTools",
       "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\TakeOwnership"
     },
     {
@@ -36,6 +75,7 @@
       "repo_folder": "WhoIsUsingThis",
       "role": "child",
       "order": 30,
+      "scope": "SystemTools",
       "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\WhoIsUsingThis"
     },
     {
@@ -47,6 +87,7 @@
       "repo_folder": "WinAppManager",
       "role": "child",
       "order": 40,
+      "scope": "SystemTools",
       "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\shell\\SystemTools\\shell\\Windows\\shell\\WinAppManager"
     },
     {
@@ -58,6 +99,7 @@
       "repo_folder": "SystemCleanup",
       "role": "child",
       "order": 50,
+      "scope": "SystemTools",
       "verify_registry_keys": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SystemTools\\shell\\Windows\\shell\\SystemCleanup"
     },
     {
@@ -69,7 +111,122 @@
       "repo_folder": "Firewall",
       "role": "child",
       "order": 60,
-      "verify_registry_keys": "HKCU\\Software\\Classes\\exefile\\shell\\FirewallManager"
+      "scope": "SystemTools",
+      "verify_registry_keys": "HKCU\\Software\\Classes\\*\\shell\\SystemTools\\shell\\Windows\\shell\\FirewallRules"
+    },
+    {
+      "name": "mklink",
+      "label": "mklink",
+      "repo": "joty79/mklink",
+      "branch": "master",
+      "install_folder": "mklink",
+      "repo_folder": "mklink",
+      "role": "standalone",
+      "scope": "Standalone",
+      "order": 70,
+      "local_paths": "{USERPROFILE}\\scripts\\mklink",
+      "workspace_marker_files": "Install.ps1",
+      "surfaces": [
+        {
+          "name": "Folder mklink menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\shell\\mklink",
+          "budget_group": "Directory.Folder.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Folder background mklink menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\mklink",
+          "budget_group": "Directory.Background.Root",
+          "visibility": "normal"
+        }
+      ],
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\shell\\mklink\\shell\\01_setSource\\command",
+        "HKCU\\Software\\Classes\\Directory\\shell\\mklink\\shell\\03_manager\\command",
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\mklink\\shell\\01_createHere\\command",
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\mklink\\shell\\02_manager\\command"
+      ]
+    },
+    {
+      "name": "SafeModeOptions",
+      "label": "Safe Mode Options",
+      "repo": "",
+      "branch": "master",
+      "install_folder": "",
+      "repo_folder": "safemode",
+      "role": "host_surface",
+      "scope": "Standalone",
+      "order": 90,
+      "local_paths": "{USERPROFILE}\\scripts\\safemode",
+      "workspace_marker_files": "SafeMode.reg",
+      "surfaces": [
+        {
+          "name": "Folder background Safe Mode menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions",
+          "budget_group": "Directory.Background.Root",
+          "visibility": "shift_only"
+        },
+        {
+          "name": "Desktop Safe Mode menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions",
+          "budget_group": "DesktopBackground.Root",
+          "visibility": "shift_only"
+        }
+      ],
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\SafeModeOptions\\shell\\02_BootSafe\\command",
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\01_BootNormal\\command",
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\SafeModeOptions\\shell\\02_BootSafe\\command"
+      ]
+    },
+    {
+      "name": "ContextLens",
+      "label": "ContextLens",
+      "repo": "joty79/ContextLens",
+      "branch": "master",
+      "install_folder": "ContextLens",
+      "repo_folder": "ContextLens",
+      "role": "standalone",
+      "scope": "Standalone",
+      "order": 80,
+      "local_paths": "{USERPROFILE}\\scripts\\ContextLens",
+      "workspace_marker_files": "Install.ps1",
+      "surfaces": [
+        {
+          "name": "PNG file ContextLens menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\SystemFileAssociations\\.png\\shell\\ContextLens",
+          "budget_group": "PngFile.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Folder background ContextLens menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\Directory\\Background\\shell\\ContextLens",
+          "budget_group": "Directory.Background.Root",
+          "visibility": "normal"
+        },
+        {
+          "name": "Desktop ContextLens menu",
+          "kind": "standalone_cascade",
+          "root_key": "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\ContextLens",
+          "budget_group": "DesktopBackground.Root",
+          "visibility": "normal"
+        }
+      ],
+      "verify_registry_keys": [
+        "HKCU\\Software\\Classes\\SystemFileAssociations\\.png\\shell\\ContextLens\\shell\\OcrFile\\command",
+        "HKCU\\Software\\Classes\\SystemFileAssociations\\.png\\shell\\ContextLens\\shell\\Manager\\command",
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\ContextLens\\shell\\SaveClipboardImage\\command",
+        "HKCU\\Software\\Classes\\Directory\\Background\\shell\\ContextLens\\shell\\OcrClipboard\\command",
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\ContextLens\\shell\\SaveClipboardImage\\command",
+        "HKCU\\Software\\Classes\\DesktopBackground\\Shell\\ContextLens\\shell\\OcrClipboard\\command"
+      ]
     }
   ]
 }

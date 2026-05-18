@@ -567,3 +567,147 @@
 - Guardrail/rule: `Safe Mode Options` root keys under `Directory\Background\shell` and `DesktopBackground\Shell` must include empty `Extended` values so they appear only with Shift+right-click.
 - Files affected: `Install.ps1`, `Install-SystemToolsMenu.ps1`, `CHANGELOG.md`, `PROJECT_RULES.md`, `D:\Users\joty79\scripts\InstallerCore\profiles\SystemTools.json`.
 - Validation/tests run: Parser validation passed; profile JSON validation passed; local-source update completed; HKCU readback confirmed `Extended` on both SafeMode root keys; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` and `InstallerCore` verify passed; Explorer restarted.
+
+### Entry - 2026-05-17 (Tool Manager provenance-aware status)
+
+- Date: 2026-05-17
+- Problem: `SystemToolsManager.ps1` showed a vague `Update available` for tools such as `Windows Update Cleanup`, even when the workspace was already at the remote commit and the installed files appeared to contain dirty-source changes later committed upstream.
+- Root cause: The manager compared only the installed `state\install-meta.json` `github_commit` to GitHub `master`, so installs made from dirty local workspaces looked simply behind. The Firewall verify path also still expected the removed top-level `exefile\shell\FirewallManager` key.
+- Guardrail/rule: Manager status must separate installed provenance (`Inst`), local workspace HEAD (`Work`, `*` when dirty), and GitHub HEAD (`Remote`). If `install-meta.json` says `source_dirty = true`, label it as `Dirty-source install` instead of generic update availability. Provide a read-only inspect path before install/repair/update so the user can see installed metadata, workspace state, remote state, and status meaning for one tool. Firewall verification should target the supported shared `SystemTools > Windows > Firewall Rules` key.
+- Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; family JSON parsed; `SystemToolsManager.ps1 -Action Status -NoPause` showed distinct `Inst`/`Work`/`Remote` columns; `SystemToolsManager.ps1 -Action InspectTool -ToolName SystemCleanup -NoPause` explained the dirty-source install state; `SystemToolsManager.ps1 -Action VerifyMenu -NoPause` passed without install/repair/update.
+
+### Entry - 2026-05-17 (Manager scope expands beyond SystemTools cascade)
+
+- Date: 2026-05-17
+- Problem: The 16-item Explorer static cascade limit means future tools cannot all live under `System Tools`, but they still need the same status/update/registry monitoring as the tools inside the shared menu.
+- Root cause: The original manager model treated the `SystemTools` cascade as the family boundary. After proving the cascade limit, standalone top-level menus and host-owned surfaces became part of the same operational family.
+- Guardrail/rule: Treat `System Tools` as one managed surface, not the boundary of management. `SystemToolsManager.ps1` should monitor repo-backed standalone tools such as `mklink`, host-owned surfaces such as `Safe Mode Options`, and future external menus through `.assets\systemtools-family.json` surfaces and budget groups. Add read-only surface and 16-item budget views before adding any more install/update actions.
+- Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON parsed; `Status`, `Surfaces`, `Budgets`, `InspectTool -ToolName mklink`, `InspectTool -ToolName SafeModeOptions`, and `VerifyMenu` ran with `-NoPause` without install/repair/update. `mklink` verified as standalone InstallerCore app; `Safe Mode Options` verified as host-owned monitored surface.
+
+### Entry - 2026-05-17 (PowerShell foreach pipeline parser trap)
+
+- Date: 2026-05-17
+- Problem: Ad-hoc PowerShell readback snippets repeatedly hit `ParserError: An empty pipe element is not allowed` when piping directly after a multi-line `foreach {}` block.
+- Root cause: The shell parsed the closing brace and following pipeline ambiguously in inline command text.
+- Guardrail/rule: For multi-line object-building snippets, assign the loop output to `$rows = foreach (...) { ... }` first, then pipe `$rows | Format-Table -AutoSize`. Avoid direct `} | Format-Table` patterns in inline verification commands.
+- Files affected: `PROJECT_RULES.md`.
+- Validation/tests run: Subsequent readback snippets using `$rows = foreach (...) { ... }` completed without parser errors.
+
+### Entry - 2026-05-17 (Manager UI template and ContextLens monitoring)
+
+- Date: 2026-05-17
+- Problem: `SystemToolsManager.ps1` had a custom arrow-key menu instead of the shared PowerShell UI template, and `ContextLens` was missing from the managed external-tool inventory.
+- Root cause: The first manager expansion focused on status provenance and standalone surfaces, but did not reuse the canonical `PS_UI_Blueprint.psm1` pattern already used by `AddDelPath.ps1` and `Toggle-PSRemoting.ps1`.
+- Guardrail/rule: Interactive `.ps1` tools in this repo should load `.codex\tools\PS_UI_Blueprint.psm1` and use `Write-UiBanner` / `Invoke-ArrowMenu` for main menus. `SystemToolsManager.ps1` is responsible for monitoring external managed menus such as `mklink`, `ContextLens`, and host-owned surfaces such as `Safe Mode Options`, even when they cannot live inside the `System Tools` cascade.
+- Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; `PS_UI_Blueprint.psm1` import exposed `Invoke-ArrowMenu`; family JSON and app metadata JSON parsed; `Status`, `Surfaces`, `Budgets`, `InspectTool -ToolName ContextLens`, and `VerifyMenu` ran with `-NoPause` without install/repair/update. `ContextLens` verified as a standalone InstallerCore app with installed metadata, workspace HEAD, and GitHub `master` all at commit `56ec4df`.
+
+### Entry - 2026-05-17 (Manager menu must not rescan on arrow keys)
+
+- Date: 2026-05-17
+- Problem: The first `PS_UI_Blueprint.psm1` conversion made `SystemToolsManager.ps1` slow and visually broken: startup and every arrow-key movement flashed through a black/full redraw and rescanned status.
+- Root cause: `Invoke-ArrowMenu` rebuilds its `HeaderBlock` on every frame, and the manager header called `Get-StatusRows`, which performs registry checks and GitHub/workspace commit reads.
+- Guardrail/rule: Expensive manager status belongs in a cached snapshot. Arrow-key movement must repaint only the menu block in place with `SetCursorPosition`; only explicit refresh (`R`) should rebuild the registry/git status snapshot.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; read-only `Status`, `VerifyMenu`, and `Budgets` smokes completed without install/repair/update.
+
+### Entry - 2026-05-17 (Manager UI should match WinAppManager composition)
+
+- Date: 2026-05-17
+- Problem: After the redraw fix, `SystemToolsManager.ps1` was faster but still looked far from WinAppManager because it displayed a raw wide status table above a plain numbered menu.
+- Root cause: The previous UI used the low-level blueprint mechanics but ignored the actual WinAppManager composition: versioned three-line banner, compact summary, section dividers, semantic action colors, and a focused menu list.
+- Guardrail/rule: For manager-style PowerShell menus, treat WinAppManager as the visual reference, not just `PS_UI_Blueprint.psm1` helpers. Keep raw diagnostic tables in explicit read-only views such as `Status`; the main menu should show a compact summary and colored action list.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed after the UI composition refactor; family JSON and app metadata JSON parsed; read-only `Status` smoke completed without install/repair/update.
+
+### Entry - 2026-05-17 (Manager key handling and surfaces summary)
+
+- Date: 2026-05-17
+- Problem: `SystemToolsManager.ps1` arrow movement could skip one menu row, `Esc` from nested tool selection still fell through to a `Press Enter` pause, and `Show managed surfaces` no longer showed the installed/workspace/remote commit summary.
+- Root cause: The manager used mixed input paths: a local cached main-menu renderer plus `Invoke-ArrowMenu` for nested tool selection, while some terminal hosts emitted duplicate arrow key events quickly enough to look like a two-row jump. The surface view had also been split away from the provenance table too aggressively.
+- Guardrail/rule: Manager menus should use one local key-reading path with duplicate-arrow debounce for both main menu and nested selectors. `Esc` in a nested selector is a true cancel and returns to the parent menu without an extra pause. Surface/budget monitoring views should keep provenance visible when it helps explain what is installed, what the workspace has, and what GitHub has.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; read-only `Status`, `Surfaces`, and `VerifyMenu` smokes completed without install/repair/update. Interactive arrow/Esc behavior requires a real terminal pass by the user because this session cannot press keys inside the launched Windows Terminal UI.
+
+### Entry - 2026-05-17 (Manager should explain itself)
+
+- Date: 2026-05-17
+- Problem: The manager still exposed implementation words such as `surfaces`, separated summary from inspection, and rescanned registry/git state when opening read-only views even if no install/update/repair had happened.
+- Root cause: The UI was organized around internal implementation concepts instead of the user's mental model: "what tools do I have?" and "where are their context-menu entries?" Read-only screens were also calling scan functions directly instead of consuming the already-built startup snapshot.
+- Guardrail/rule: The interactive manager should center on `Tools Summary` and `Menu Entries`. `Tools Summary` must be navigable and Enter should inspect the selected tool. `Menu Entries` should combine verification state with context-menu entry/count information. Read-only views must use the cached startup snapshot; only explicit refresh or real install/update/repair should rescan.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `Status`, `MenuEntries`, `Budgets`, and `VerifyMenu` read-only smokes completed without install/repair/update; `git diff --check` passed. Interactive arrow/Esc behavior still needs a real terminal pass by the user because this session cannot press keys inside the TUI.
+
+### Entry - 2026-05-17 (Menu Structure tree view)
+
+- Date: 2026-05-17
+- Problem: Separate `Menu Entries` and `Check 16-item menu limits` screens made the manager harder to understand because menu placement and budget health were split apart.
+- Root cause: The UI mirrored internal data tables instead of showing the context-menu structure as the user sees it in Explorer.
+- Guardrail/rule: Combine menu entry verification and 16-item budget status into one `Menu Structure` view. Render groups in a directory-tree style outline, show `used/free/status` for each group, and list each entry's tool, scope, visibility, item count, and menu verification state.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` rendered the tree-style combined view; `git diff --check` passed. No install/repair/update was run.
+
+### Entry - 2026-05-17 (Root menus are not submenu budgets)
+
+- Date: 2026-05-17
+- Problem: `Menu Structure` showed labels such as `DesktopBackground.Root OK (3/16 used, 13 free)`, which implied the desktop root menu itself had three visible entries and was governed by the same 16-item submenu budget.
+- Root cause: The budget calculation reused the largest child submenu count for root groups. For desktop, `3` came from `ContextLens` child items, not from top-level desktop entries. The desktop right-click menu also includes entries sourced from `Directory\Background`, such as `mklink`.
+- Guardrail/rule: Do not show `x/16` budget labels for root context-menu groups. Root groups should show monitored entry counts, and the manager should include a `Desktop right-click` summary for monitored tools that appear there, including entries sourced from `Directory\Background`. Keep 16-item warnings for nested static submenus/cascades.
+- Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` showed `Desktop right-click` with four monitored entries (`ContextLens`, `mklink`, `Safe Mode Options`, `System Tools`) and no `x/16` root-budget label. No install/repair/update was run.
+
+### Entry - 2026-05-17 (Menu Structure labels should not repeat context)
+
+- Date: 2026-05-17
+- Problem: `Menu Structure` rows repeated context already present in the section header, such as `Desktop ContextLens menu - ContextLens` under `DesktopBackground.Root`.
+- Root cause: The renderer used the internal surface name as the primary row label, even though the group title already says whether the row is desktop, folder background, or file-specific.
+- Guardrail/rule: In `Menu Structure`, use the human tool name as the primary tree row label and move technical/context detail to secondary metadata only when useful. Highlight tool names with the gold/orange accent for scanability.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` showed simplified gold/orange tool-name labels without repeated `Desktop/Folder background ... menu` text; `git diff --check` passed. No install/repair/update was run.
+
+### Entry - 2026-05-17 (Menu Structure should use human targets)
+
+- Date: 2026-05-17
+- Problem: `Menu Structure` still exposed registry-style groups such as `Directory.Folder.Root`, `PngFile.Root`, and `SystemTools.Root`, forcing the user to translate registry roots into actual right-click scenarios.
+- Root cause: The renderer grouped directly by internal `budget_group` values instead of the menu surfaces a human sees in Explorer.
+- Guardrail/rule: Group `Menu Structure` by human targets first: `Right-click on Desktop / empty folder space`, `Right-click on a folder`, `Right-click on a PNG file`, and `Inside System Tools`. Keep registry/root names out of the primary labels; show technical information only as secondary details when needed.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` rendered human target sections without registry-style primary labels; `git diff --check` passed. No install/repair/update was run.
+
+### Entry - 2026-05-17 (Menu Structure should show actual SystemTools children)
+
+- Date: 2026-05-17
+- Problem: `Right-click on a folder` omitted `System Tools`, and `Inside System Tools` hid the actual root children (`Explorer`, `Windows`, `Tool Manager / Updates`) behind a generic host entry.
+- Root cause: The human target renderer treated `SystemTools.Root` only as an internal surface instead of both a folder right-click entry and a menu container with children.
+- Guardrail/rule: Include `System Tools` under `Right-click on a folder`. In `Inside System Tools`, read the cached root children and show `Explorer`, `Windows`, and `Tool Manager / Updates` directly, with submenu budget counts for children that contain nested entries.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` showed `System Tools` under `Right-click on a folder` and showed `Explorer`, `Windows`, and `Tool Manager / Updates` under `Inside System Tools`. No install/repair/update was run.
+
+### Entry - 2026-05-17 (SystemTools children differ per target)
+
+- Date: 2026-05-17
+- Problem: `Inside System Tools` implied a single root layout, but `System Tools > Windows` has different child counts on folder, folder-background/desktop, and file targets.
+- Root cause: The manager read only `Directory\shell\SystemTools\shell` for the `Inside System Tools` view. Actual Explorer context roots have separate registry trees for folder item, folder/desktop background, and file targets.
+- Guardrail/rule: Render `Inside System Tools` per human target: desktop/empty folder space, folder, and file. Read each target's actual `SystemTools\shell` children from the cached snapshot and show the submenu counts independently.
+- Files affected: `SystemToolsManager.ps1`, `.assets\systemtools-family.json`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed; family JSON and app metadata JSON parsed; `SystemToolsManager.ps1 -Action MenuStructure -NoPause` showed `Inside System Tools` split into desktop/empty folder space (`Windows` 6/16), folder (`Windows` 5/16), and file (`Windows` 3/16); `git diff --check` passed. No install/repair/update was run.
+
+### Entry - 2026-05-17 (SystemTools budget must be shown per popup)
+
+- Date: 2026-05-17
+- Problem: `Inside System Tools` temporarily reported a combined tree total (`root entries + submenu children`), which incorrectly implied a new submenu with 4 child items should disappear when the combined number exceeded 16.
+- Root cause: A first live probe was added only under `DesktopBackground`, while the visible desktop menu also used the `Directory\Background` branch. That made the test result look like a 17-entry tree failure when it was actually the wrong branch.
+- Guardrail/rule: Show the 16-item static cascade budget per visible popup. The `System Tools` root popup counts only its visible branches/direct items (`Explorer`, `Windows`, `Tool Manager / Updates`, etc.). Each submenu popup (`Explorer`, `Windows`, a future `Test` menu, etc.) has its own 16-item budget. Separators remain free.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Temporarily added `zzz_LimitTest` with 2 and then 4 child commands under both `DesktopBackground\Shell\SystemTools\shell` and `Directory\Background\shell\SystemTools\shell`; user visually confirmed the 4-child test branch and all child items appeared. Cleanup removed both temporary registry branches successfully. No install/repair/update was run.
+
+### Entry - 2026-05-18 (CORRECTION: 16-Entry Limit Is DEPTH-FIRST GLOBAL, Not Per-Popup)
+
+- Date: 2026-05-18
+- Problem: Previous Codex entry concluded the 16-limit was per-popup (each submenu has its own 16-budget). User believed a 4th submenu with 4 children made 17 total visible. On re-test, `z_ToolManager` had silently disappeared — user simply didn't notice.
+- Root cause: The 16-entry limit counts entries DEPTH-FIRST across the ENTIRE cascade tree (not per popup). Explorer walks registry keys alphabetically, descends into each submenu's children BEFORE moving to the next sibling, and stops at entry 16. T11: 18 registered entries -> exactly 16 visible, `z_ToolManager` and last dummy child silently cut.
+- Guardrail/rule: ALWAYS count the GLOBAL depth-first total of the cascade tree (headers + all children recursively). Current SystemTools uses 12 of 16 budget (4 remaining). Previous T9 result ("per-level independence") needs re-verification.
+- Files affected: `AG_CASCADE_LIMIT_TESTS.md`, `GEMINI.md` (guardrail #54), `PROJECT_RULES.md`.
+- Validation/tests run: T11 test script (`DummyTest-T11-Verify18.ps1`) added 5 children to real SystemTools cascade; user screenshot confirmed exactly 16 visible (3 root headers + 3+6+4 children); dummy removed and cascade restored to 12/16.

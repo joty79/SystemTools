@@ -1,7 +1,7 @@
 #requires -version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','VerifyMenu')]
+    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','VerifyMenu','InspectTool','Surfaces','MenuEntries','MenuStructure','Budgets')]
     [string]$Action = 'Menu',
     [AllowEmptyString()]
     [string]$ToolName = '',
@@ -11,7 +11,53 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$_E = [char]27
+$_C = @{
+    H1      = "$_E[38;2;90;180;240m"
+    H2      = "$_E[38;2;140;160;180m"
+    OK      = "$_E[38;2;46;204;113m"
+    Warn    = "$_E[38;2;241;196;15m"
+    Fail    = "$_E[38;2;231;76;60m"
+    Info    = "$_E[38;2;52;152;219m"
+    Gold    = "$_E[38;2;243;156;18m"
+    White   = "$_E[38;2;220;225;230m"
+    Dim     = "$_E[38;2;100;110;120m"
+    Accent  = "$_E[38;2;155;89;182m"
+    SelBg   = "$_E[48;2;40;80;120m"
+    SelFg   = "$_E[38;2;255;255;255m"
+    Bold    = "$_E[1m"
+    Reset   = "$_E[0m"
+    EraseLn = "$_E[K"
+}
+
 $Script:FamilyConfigPath = Join-Path $PSScriptRoot '.assets\systemtools-family.json'
+$Script:LastManagerNavigationKey = ''
+$Script:LastManagerNavigationAt = [DateTime]::MinValue
+
+function Get-BlueprintModulePath {
+    $candidates = @(
+        (Join-Path $env:USERPROFILE '.codex\tools\PS_UI_Blueprint.psm1'),
+        'C:\Users\joty79\.codex\tools\PS_UI_Blueprint.psm1'
+    )
+
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            return $candidate
+        }
+    }
+
+    return ''
+}
+
+function Import-ManagerUi {
+    if (Get-Command -Name Invoke-ArrowMenu -ErrorAction SilentlyContinue) { return $true }
+
+    $blueprintPath = Get-BlueprintModulePath
+    if ([string]::IsNullOrWhiteSpace($blueprintPath)) { return $false }
+
+    Import-Module $blueprintPath -Force -DisableNameChecking
+    return $true
+}
 
 function Get-ObjectProperty {
     param(
@@ -80,8 +126,11 @@ function ConvertTo-ToolDefinition {
         InstallFolder = [string](Get-ObjectProperty -Object $Item -Name 'install_folder' -Default $repoFolder)
         RepoFolder = $repoFolder
         Role = [string](Get-ObjectProperty -Object $Item -Name 'role' -Default 'child')
+        Scope = [string](Get-ObjectProperty -Object $Item -Name 'scope' -Default 'SystemTools')
         Order = [int](Get-ObjectProperty -Object $Item -Name 'order' -Default 999)
         LocalPaths = @(Get-ListProperty -Object $Item -Name 'local_paths')
+        WorkspaceMarkerFiles = @(Get-ListProperty -Object $Item -Name 'workspace_marker_files')
+        Surfaces = @(Get-ListProperty -Object $Item -Name 'surfaces')
         VerifyRegistryKeys = @(Get-ListProperty -Object $Item -Name 'verify_registry_keys')
     }
 }
@@ -109,8 +158,8 @@ $Script:Tools = @(Get-FamilyTools)
 
 function Write-Title {
     try { Clear-Host } catch { Write-Host '' }
-    Write-Host 'SystemTools Manager' -ForegroundColor Cyan
-    Write-Host 'Install, repair, and update the System Tools context-menu family' -ForegroundColor DarkGray
+    Write-Host 'Windows Tools Manager' -ForegroundColor Cyan
+    Write-Host 'Monitor, repair, and update managed Windows context-menu tools' -ForegroundColor DarkGray
     Write-Host ''
 }
 
@@ -121,6 +170,8 @@ function Get-ShortCommit([AllowEmptyString()][string]$Commit) {
 }
 
 function Get-RemoteCommit([string]$Repo, [string]$Branch) {
+    if ([string]::IsNullOrWhiteSpace($Repo)) { return $null }
+
     try {
         $remote = & git.exe ls-remote "https://github.com/$Repo.git" "refs/heads/$Branch" 2>$null
         if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($remote)) { return $null }
@@ -128,6 +179,57 @@ function Get-RemoteCommit([string]$Repo, [string]$Branch) {
     }
     catch {
         return $null
+    }
+}
+
+function Get-GitValue {
+    param(
+        [Parameter(Mandatory)][string]$RepoPath,
+        [Parameter(Mandatory)][string[]]$Arguments
+    )
+
+    try {
+        $output = & git.exe -C $RepoPath @Arguments 2>$null
+        if ($LASTEXITCODE -ne 0) { return '' }
+        return ([string]($output | Select-Object -First 1)).Trim()
+    }
+    catch {
+        return ''
+    }
+}
+
+function Get-WorkspaceState {
+    param([Parameter(Mandatory)]$Tool)
+
+    $repoPath = Resolve-ToolRepoPath -Tool $Tool
+    if ([string]::IsNullOrWhiteSpace($repoPath)) {
+        return [pscustomobject]@{
+            Path = ''
+            Commit = ''
+            IsDirty = $false
+            Summary = 'No workspace'
+        }
+    }
+
+    $isGitRepo = Get-GitValue -RepoPath $repoPath -Arguments @('rev-parse', '--is-inside-work-tree')
+    if ($isGitRepo -ne 'true') {
+        return [pscustomobject]@{
+            Path = $repoPath
+            Commit = ''
+            IsDirty = $false
+            Summary = 'No git'
+        }
+    }
+
+    $commit = Get-GitValue -RepoPath $repoPath -Arguments @('rev-parse', 'HEAD')
+    $dirtyOutput = Get-GitValue -RepoPath $repoPath -Arguments @('status', '--porcelain')
+    $isDirty = -not [string]::IsNullOrWhiteSpace($dirtyOutput)
+
+    [pscustomobject]@{
+        Path = $repoPath
+        Commit = $commit
+        IsDirty = $isDirty
+        Summary = if ($isDirty) { 'Dirty' } else { 'Clean' }
     }
 }
 
@@ -151,6 +253,84 @@ function Test-RegistryKeyExists {
     return ($LASTEXITCODE -eq 0)
 }
 
+function Get-RegistrySubKeyCount {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $nativePath = Convert-RegistryPathForRegExe -Path $Path
+    $output = & reg.exe query $nativePath 2>$null
+    if ($LASTEXITCODE -ne 0) { return $null }
+
+    $prefix = $nativePath.TrimEnd('\') + '\'
+    $children = @($output |
+        ForEach-Object { [string]$_ } |
+        Where-Object { $_.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) } |
+        ForEach-Object {
+            $child = $_.Substring($prefix.Length)
+            if ($child -and $child -notmatch '\\') { $child }
+        } |
+        Select-Object -Unique)
+
+    return $children.Count
+}
+
+function Convert-RegistryPathForProvider {
+    param([Parameter(Mandatory)][string]$Path)
+
+    if ($Path.StartsWith('HKCU\', [StringComparison]::OrdinalIgnoreCase)) {
+        return 'HKCU:\' + $Path.Substring(5)
+    }
+    if ($Path.StartsWith('HKCR\', [StringComparison]::OrdinalIgnoreCase)) {
+        return 'Registry::HKEY_CLASSES_ROOT\' + $Path.Substring(5)
+    }
+    return $Path
+}
+
+function Get-RegistryChildEntries {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $providerPath = Convert-RegistryPathForProvider -Path $Path
+    if (-not (Test-Path -LiteralPath $providerPath)) { return @() }
+
+    foreach ($child in (Get-ChildItem -LiteralPath $providerPath | Sort-Object PSChildName)) {
+        $item = Get-Item -LiteralPath $child.PSPath
+        $props = Get-ItemProperty -LiteralPath $child.PSPath
+        $label = if ($props.PSObject.Properties.Name -contains 'MUIVerb' -and -not [string]::IsNullOrWhiteSpace([string]$props.MUIVerb)) {
+            [string]$props.MUIVerb
+        }
+        else {
+            $defaultValue = [string]$item.GetValue('')
+            if (-not [string]::IsNullOrWhiteSpace($defaultValue)) { $defaultValue } else { [string]$child.PSChildName }
+        }
+
+        $shellPath = Join-Path $child.PSPath 'shell'
+        $childCount = if (Test-Path -LiteralPath $shellPath) { @(Get-ChildItem -LiteralPath $shellPath).Count } else { 0 }
+        [pscustomobject]@{
+            Key = [string]$child.PSChildName
+            Label = $label
+            Items = $childCount
+            IsSubmenu = $childCount -gt 0
+            Visibility = if ($props.PSObject.Properties.Name -contains 'Extended') { 'Shift only' } else { 'Normal' }
+        }
+    }
+}
+
+function Get-SystemToolsMenuTargets {
+    $targets = @(
+        [pscustomobject]@{ Label = 'Desktop / empty folder space'; Path = 'HKCU\Software\Classes\Directory\Background\shell\SystemTools\shell'; Also = 'DesktopBackground uses the same layout here' },
+        [pscustomobject]@{ Label = 'Folder'; Path = 'HKCU\Software\Classes\Directory\shell\SystemTools\shell'; Also = '' },
+        [pscustomobject]@{ Label = 'File'; Path = 'HKCU\Software\Classes\*\shell\SystemTools\shell'; Also = '' }
+    )
+
+    foreach ($target in $targets) {
+        [pscustomobject]@{
+            Label = $target.Label
+            Path = $target.Path
+            Note = $target.Also
+            Children = @(Get-RegistryChildEntries -Path $target.Path)
+        }
+    }
+}
+
 function Get-RegistryMenuState {
     param($Tool)
 
@@ -170,20 +350,26 @@ function Get-RegistryMenuState {
 function Get-ToolState {
     param([Parameter(Mandatory)]$Tool)
 
-    $installPath = Join-Path $env:LOCALAPPDATA $Tool.InstallFolder
-    $installerPath = Join-Path $installPath 'Install.ps1'
-    $metaPath = Join-Path $installPath 'state\install-meta.json'
+    $hasInstallFolder = -not [string]::IsNullOrWhiteSpace([string]$Tool.InstallFolder)
+    $installPath = if ($hasInstallFolder) { Join-Path $env:LOCALAPPDATA $Tool.InstallFolder } else { '' }
+    $installerPath = if ($hasInstallFolder) { Join-Path $installPath 'Install.ps1' } else { '' }
+    $metaPath = if ($hasInstallFolder) { Join-Path $installPath 'state\install-meta.json' } else { '' }
     $meta = $null
-    if (Test-Path -LiteralPath $metaPath) {
+    if (-not [string]::IsNullOrWhiteSpace($metaPath) -and (Test-Path -LiteralPath $metaPath)) {
         try { $meta = Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json } catch { $meta = $null }
     }
 
     $localCommit = if ($meta -and $meta.PSObject.Properties.Name -contains 'github_commit') { [string]$meta.github_commit } else { '' }
+    $installedSourceDirty = if ($meta -and $meta.PSObject.Properties.Name -contains 'source_dirty') { [bool]$meta.source_dirty } else { $false }
     $remoteCommit = Get-RemoteCommit -Repo $Tool.Repo -Branch $Tool.Branch
-    $installed = Test-Path -LiteralPath $installerPath
+    $workspace = Get-WorkspaceState -Tool $Tool
     $menuState = Get-RegistryMenuState -Tool $Tool
+    $installed = if ($hasInstallFolder) { Test-Path -LiteralPath $installerPath } else { $menuState -eq 'OK' }
 
-    $status = if (-not $installed) {
+    $status = if (-not $hasInstallFolder) {
+        if ($menuState -eq 'OK') { 'Monitored' } else { 'Menu issue' }
+    }
+    elseif (-not $installed) {
         'Not installed'
     }
     elseif ([string]::IsNullOrWhiteSpace($remoteCommit)) {
@@ -192,8 +378,24 @@ function Get-ToolState {
     elseif (-not [string]::IsNullOrWhiteSpace($localCommit) -and $localCommit -eq $remoteCommit) {
         'Up to date'
     }
+    elseif ($installedSourceDirty) {
+        'Dirty-source install'
+    }
     else {
-        'Update available'
+        'Installed behind'
+    }
+
+    $workspaceStatus = if ([string]::IsNullOrWhiteSpace($workspace.Commit)) {
+        $workspace.Summary
+    }
+    elseif ([string]::IsNullOrWhiteSpace($remoteCommit)) {
+        $workspace.Summary
+    }
+    elseif ($workspace.Commit -eq $remoteCommit) {
+        if ($workspace.IsDirty) { 'Current + dirty' } else { 'Current' }
+    }
+    else {
+        if ($workspace.IsDirty) { 'Different + dirty' } else { 'Different' }
     }
 
     [pscustomobject]@{
@@ -201,12 +403,24 @@ function Get-ToolState {
         Label = $Tool.Label
         Repo = $Tool.Repo
         Branch = $Tool.Branch
+        Role = $Tool.Role
+        Scope = $Tool.Scope
         InstallPath = $installPath
         InstallerPath = $installerPath
+        InstallMetaPath = $metaPath
         Installed = $installed
         Version = if ($meta -and $meta.PSObject.Properties.Name -contains 'app_version') { [string]$meta.app_version } else { '-' }
-        LocalCommit = $localCommit
+        PackageSource = if ($meta -and $meta.PSObject.Properties.Name -contains 'package_source') { [string]$meta.package_source } else { '-' }
+        SourcePath = if ($meta -and $meta.PSObject.Properties.Name -contains 'source_path') { [string]$meta.source_path } else { '-' }
+        LastAction = if ($meta -and $meta.PSObject.Properties.Name -contains 'last_action') { [string]$meta.last_action } else { '-' }
+        InstalledUtc = if ($meta -and $meta.PSObject.Properties.Name -contains 'installed_utc') { [string]$meta.installed_utc } else { '-' }
+        InstalledCommit = $localCommit
+        InstalledSourceDirty = $installedSourceDirty
+        WorkspacePath = $workspace.Path
+        WorkspaceCommit = $workspace.Commit
+        WorkspaceStatus = $workspaceStatus
         RemoteCommit = $remoteCommit
+        HasInstaller = $hasInstallFolder
         Menu = $menuState
         Status = $status
     }
@@ -214,6 +428,26 @@ function Get-ToolState {
 
 function Get-AllToolStates {
     foreach ($tool in $Script:Tools) { Get-ToolState -Tool $tool }
+}
+
+function Get-StatusRows {
+    param([object[]]$States = $null)
+
+    if ($null -eq $States) { $States = @(Get-AllToolStates) }
+    foreach ($state in @($States)) {
+        [pscustomobject]@{
+            Tool = $state.Label
+            Scope = $state.Scope
+            Installed = if ($state.Installed) { 'Yes' } else { 'No' }
+            Menu = $state.Menu
+            Status = $state.Status
+            Ver = $state.Version
+            Inst = Get-ShortCommit $state.InstalledCommit
+            Work = if ($state.WorkspaceStatus -match 'dirty') { (Get-ShortCommit $state.WorkspaceCommit) + '*' } else { Get-ShortCommit $state.WorkspaceCommit }
+            WorkState = $state.WorkspaceStatus
+            Remote = Get-ShortCommit $state.RemoteCommit
+        }
+    }
 }
 
 function Get-RepoSearchRoots {
@@ -243,17 +477,28 @@ function Get-RepoSearchRoots {
 function Resolve-ToolRepoPath {
     param([Parameter(Mandatory)]$Tool)
 
+    $markerFiles = @($Tool.WorkspaceMarkerFiles)
+    if ($markerFiles.Count -eq 0) { $markerFiles = @('Install.ps1') }
+
     foreach ($candidate in @($Tool.LocalPaths)) {
         $path = Expand-PathToken -Path ([string]$candidate)
-        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath (Join-Path $path 'Install.ps1'))) {
-            return (Resolve-Path -LiteralPath $path).Path
+        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
+            foreach ($marker in $markerFiles) {
+                if (Test-Path -LiteralPath (Join-Path $path $marker)) {
+                    return (Resolve-Path -LiteralPath $path).Path
+                }
+            }
         }
     }
 
     foreach ($root in Get-RepoSearchRoots) {
         $candidate = Join-Path $root $Tool.RepoFolder
-        if (Test-Path -LiteralPath (Join-Path $candidate 'Install.ps1')) {
-            return (Resolve-Path -LiteralPath $candidate).Path
+        if (Test-Path -LiteralPath $candidate) {
+            foreach ($marker in $markerFiles) {
+                if (Test-Path -LiteralPath (Join-Path $candidate $marker)) {
+                    return (Resolve-Path -LiteralPath $candidate).Path
+                }
+            }
         }
     }
 
@@ -273,18 +518,167 @@ function Get-ToolByName {
 
 function Show-Status {
     Write-Title
-    $rows = foreach ($state in @(Get-AllToolStates)) {
-        [pscustomobject]@{
-            Tool = $state.Label
-            Installed = if ($state.Installed) { 'Yes' } else { 'No' }
-            Menu = $state.Menu
-            Status = $state.Status
-            Version = $state.Version
-            Local = Get-ShortCommit $state.LocalCommit
-            Remote = Get-ShortCommit $state.RemoteCommit
+    $rows = @(Get-StatusRows)
+    $rows | Format-Table -AutoSize
+    Write-Host 'Inst = installed metadata commit; Work = workspace HEAD (* dirty); Remote = GitHub branch HEAD.' -ForegroundColor DarkGray
+    Write-Host 'Monitored = host-owned or registry-only surface; Dirty-source install = installed from uncommitted workspace changes.' -ForegroundColor DarkGray
+}
+
+function Write-DetailLine {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [AllowEmptyString()][string]$Value = '',
+        [string]$Color = 'Gray'
+    )
+
+    Write-Host ("{0,-18}: " -f $Name) -NoNewline -ForegroundColor DarkGray
+    Write-Host $Value -ForegroundColor $Color
+}
+
+function Show-ToolInspection {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $tool = Get-ToolByName -Name $Name
+    $state = Get-ToolState -Tool $tool
+    Show-ToolInspectionState -State $state
+}
+
+function Show-ToolInspectionState {
+    param([Parameter(Mandatory)]$State)
+
+    $state = $State
+    Write-Title
+    Write-Host "Status details: $($state.Label)" -ForegroundColor Cyan
+    Write-Host ''
+
+    Write-Host 'Installed copy' -ForegroundColor Green
+    Write-DetailLine -Name 'Installed' -Value $(if ($state.Installed) { 'Yes' } else { 'No' })
+    Write-DetailLine -Name 'Scope' -Value $state.Scope
+    Write-DetailLine -Name 'Role' -Value $state.Role
+    Write-DetailLine -Name 'Has installer' -Value ([string]$state.HasInstaller)
+    Write-DetailLine -Name 'Path' -Value $state.InstallPath
+    Write-DetailLine -Name 'Version' -Value $state.Version
+    Write-DetailLine -Name 'Metadata commit' -Value (Get-ShortCommit $state.InstalledCommit)
+    Write-DetailLine -Name 'Source dirty' -Value $([string]$state.InstalledSourceDirty) -Color $(if ($state.InstalledSourceDirty) { 'Yellow' } else { 'Gray' })
+    Write-DetailLine -Name 'Package source' -Value $state.PackageSource
+    Write-DetailLine -Name 'Source path' -Value $state.SourcePath
+    Write-DetailLine -Name 'Last action' -Value $state.LastAction
+    Write-DetailLine -Name 'Installed UTC' -Value $state.InstalledUtc
+
+    Write-Host ''
+    Write-Host 'Workspace and remote' -ForegroundColor Green
+    Write-DetailLine -Name 'Workspace path' -Value $state.WorkspacePath
+    Write-DetailLine -Name 'Workspace commit' -Value (Get-ShortCommit $state.WorkspaceCommit)
+    Write-DetailLine -Name 'Workspace state' -Value $state.WorkspaceStatus -Color $(if ($state.WorkspaceStatus -match 'dirty') { 'Yellow' } else { 'Gray' })
+    Write-DetailLine -Name 'Remote commit' -Value (Get-ShortCommit $state.RemoteCommit)
+    Write-DetailLine -Name 'Menu state' -Value $state.Menu -Color $(if ($state.Menu -eq 'OK') { 'Green' } else { 'Yellow' })
+    Write-DetailLine -Name 'Overall status' -Value $state.Status -Color $(if ($state.Status -eq 'Up to date') { 'Green' } elseif ($state.Status -eq 'Dirty-source install') { 'Yellow' } else { 'Gray' })
+
+    Write-Host ''
+    Write-Host 'Meaning' -ForegroundColor Green
+    if (-not $state.Installed) {
+        Write-Host 'This tool is not installed, or its expected monitored menu entries are missing.' -ForegroundColor Gray
+    }
+    elseif (-not $state.HasInstaller) {
+        Write-Host 'This is a monitored surface without its own installed package. The manager checks its registry/menu presence but will not update it as a standalone installed app.' -ForegroundColor Gray
+    }
+    elseif ($state.Status -eq 'Up to date') {
+        Write-Host 'The installed metadata commit matches the latest GitHub commit.' -ForegroundColor Gray
+    }
+    elseif ($state.Status -eq 'Dirty-source install') {
+        Write-Host 'This was installed from a workspace that had uncommitted changes. The installed files may already include later content, but the metadata still points at the last clean commit available during that install.' -ForegroundColor Yellow
+        Write-Host 'This screen is read-only. It does not repair metadata, reinstall files, or update from GitHub.' -ForegroundColor DarkGray
+    }
+    elseif ($state.Status -eq 'Installed behind') {
+        Write-Host 'The installed metadata commit is older than the latest GitHub commit, and the install was not marked as dirty-source. Update selected tool would refresh the installed copy.' -ForegroundColor Gray
+    }
+    elseif ($state.Status -eq 'Check failed') {
+        Write-Host 'The installed copy exists, but the remote GitHub commit check failed. Avoid treating cached or partial status as proof that the tool is current.' -ForegroundColor Yellow
+    }
+    else {
+        Write-Host 'Review the fields above before choosing an install, repair, or update action.' -ForegroundColor Gray
+    }
+}
+
+function Get-ToolSurfaces {
+    foreach ($tool in $Script:Tools) {
+        foreach ($surface in @($tool.Surfaces)) {
+            $rootKey = [string](Get-ObjectProperty -Object $surface -Name 'root_key' -Default '')
+            $shellKey = if ([string]::IsNullOrWhiteSpace($rootKey)) { '' } else { "$rootKey\shell" }
+            $childCount = if ([string]::IsNullOrWhiteSpace($shellKey)) { $null } else { Get-RegistrySubKeyCount -Path $shellKey }
+
+            [pscustomobject]@{
+                Tool = $tool.Label
+                Scope = $tool.Scope
+                Surface = [string](Get-ObjectProperty -Object $surface -Name 'name' -Default '')
+                Kind = [string](Get-ObjectProperty -Object $surface -Name 'kind' -Default '')
+                Visibility = [string](Get-ObjectProperty -Object $surface -Name 'visibility' -Default 'normal')
+                BudgetGroup = [string](Get-ObjectProperty -Object $surface -Name 'budget_group' -Default '')
+                RootKey = $rootKey
+                ChildCount = $childCount
+            }
         }
     }
+}
+
+function Show-Surfaces {
+    Write-Title
+    $statusRows = @(Get-StatusRows)
+    if ($statusRows.Count -gt 0) {
+        Write-Host 'Managed tools summary' -ForegroundColor Cyan
+        $statusRows | Select-Object Tool, Scope, Installed, Menu, Status, Ver, Inst, Work, WorkState, Remote | Format-Table -AutoSize
+        Write-Host 'Inst = installed metadata commit; Work = workspace HEAD (* dirty); Remote = GitHub branch HEAD.' -ForegroundColor DarkGray
+        Write-Host ''
+    }
+
+    Write-Host 'Menu entries' -ForegroundColor Cyan
+    $rows = foreach ($surface in @(Get-ToolSurfaces)) {
+        [pscustomobject]@{
+            Tool = $surface.Tool
+            Scope = $surface.Scope
+            Entry = $surface.Surface
+            Visibility = $surface.Visibility
+            Items = if ($null -eq $surface.ChildCount) { '-' } else { [string]$surface.ChildCount }
+            Group = $surface.BudgetGroup
+        }
+    }
+
+    if ($rows.Count -eq 0) {
+        Write-Host 'No menu entries are defined.' -ForegroundColor Yellow
+        return
+    }
+
     $rows | Format-Table -AutoSize
+    Write-Host 'Menu entries may live inside System Tools or as separate top-level context menus.' -ForegroundColor DarkGray
+}
+
+function Show-Budgets {
+    param([object[]]$Surfaces = $null)
+
+    Write-Title
+    if ($null -eq $Surfaces) { $Surfaces = @(Get-ToolSurfaces) }
+    $surfaces = @($Surfaces | Where-Object { -not [string]::IsNullOrWhiteSpace($_.BudgetGroup) })
+    if ($surfaces.Count -eq 0) {
+        Write-Host 'No budget groups are defined.' -ForegroundColor Yellow
+        return
+    }
+
+    $rows = foreach ($group in ($surfaces | Group-Object BudgetGroup)) {
+        $max = ($group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum).Maximum
+        $count = if ($null -eq $max) { 0 } else { [int]$max }
+        $remaining = 16 - $count
+        $status = if ($count -gt 16) { 'Over limit' } elseif ($count -ge 14) { 'Near limit' } else { 'OK' }
+        [pscustomobject]@{
+            BudgetGroup = $group.Name
+            VisibleItems = $count
+            Remaining = $remaining
+            Status = $status
+            Tools = (($group.Group | ForEach-Object { $_.Tool }) | Select-Object -Unique) -join ', '
+        }
+    }
+
+    $rows | Sort-Object Status, BudgetGroup | Format-Table -AutoSize
+    Write-Host 'Static Explorer cascades have a verified 16 visible item limit per popup level. Separators do not count.' -ForegroundColor DarkGray
 }
 
 function Invoke-Installer {
@@ -447,74 +841,677 @@ function Invoke-VerifyMenu {
 function Read-ToolChoice {
     param([Parameter(Mandatory)][string]$Prompt)
 
-    Write-Host ''
-    for ($i = 0; $i -lt $Script:Tools.Count; $i++) {
-        Write-Host ("[{0}] {1}" -f ($i + 1), $Script:Tools[$i].Label)
-    }
-    Write-Host '[Q] Cancel'
-    Write-Host ''
+    return Read-ManagerToolSelection -Prompt $Prompt
+}
 
-    $choice = Read-Host $Prompt
-    if ($null -eq $choice) { return $null }
-    $choice = $choice.Trim()
-    if ($choice -match '^(q|quit|exit)$') { return $null }
-    if ($choice -match '^\d+$') {
-        $index = [int]$choice - 1
-        if ($index -ge 0 -and $index -lt $Script:Tools.Count) { return $Script:Tools[$index] }
+function New-ManagerMenuSnapshot {
+    $states = @(Get-AllToolStates)
+    $rows = @(Get-StatusRows -States $states)
+    $surfaces = @(Get-ToolSurfaces)
+    $systemToolsMenus = @(Get-SystemToolsMenuTargets)
+    $attention = @($rows | Where-Object { $_.Menu -ne 'OK' -or $_.Status -notin @('Up to date', 'Monitored', 'Dirty-source install') })
+    $dirty = @($rows | Where-Object { $_.Status -eq 'Dirty-source install' })
+    $installed = @($rows | Where-Object { $_.Installed -eq 'Yes' })
+    $menuOk = @($rows | Where-Object { $_.Menu -eq 'OK' })
+    $currentWorkspace = @($rows | Where-Object { $_.WorkState -in @('Current', 'Current + dirty', 'No git') })
+    $standalone = @($rows | Where-Object { $_.Scope -eq 'Standalone' })
+    $systemTools = @($rows | Where-Object { $_.Scope -eq 'SystemTools' })
+    $statusText = ($rows | Format-Table -AutoSize | Out-String -Width 220).TrimEnd()
+    $topIssues = @($attention | Select-Object -First 3 | ForEach-Object { '{0}: {1}' -f $_.Tool, $_.Status })
+
+    [pscustomobject]@{
+        States = $states
+        Rows = $rows
+        Surfaces = $surfaces
+        SystemToolsMenus = $systemToolsMenus
+        StatusText = $statusText
+        TotalCount = $rows.Count
+        InstalledCount = $installed.Count
+        MenuOkCount = $menuOk.Count
+        WorkspaceCurrentCount = $currentWorkspace.Count
+        StandaloneCount = $standalone.Count
+        SystemToolsCount = $systemTools.Count
+        AttentionCount = $attention.Count
+        DirtySourceCount = $dirty.Count
+        IssueSummary = if ($topIssues.Count -gt 0) { $topIssues -join '; ' } else { 'none' }
+        CheckedAt = Get-Date
+    }
+}
+
+function Get-ManagerUiWidth {
+    try { [Math]::Min(100, $Host.UI.RawUI.WindowSize.Width - 2) }
+    catch { 80 }
+}
+
+function Get-ManagerAppVersion {
+    $metadataPath = Join-Path $PSScriptRoot 'app-metadata.json'
+    if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { return '1.0.0' }
+
+    try {
+        $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json
+        if ($metadata.PSObject.Properties.Name -contains 'version' -and -not [string]::IsNullOrWhiteSpace([string]$metadata.version)) {
+            return [string]$metadata.version
+        }
+    }
+    catch {}
+
+    return '1.0.0'
+}
+
+function Write-ManagerBanner {
+    param(
+        [string]$StatusLabel = 'Snapshot pending',
+        [string]$StatusColor = $_C.Dim
+    )
+
+    $width = Get-ManagerUiWidth
+    $border = [string]::new([char]0x2550, ($width - 2))
+    $titleText = " Windows Tools Manager v$(Get-ManagerAppVersion)"
+    $subText = ' Tools + Menu Structure + Updates'
+    $statusText = " Status : $StatusLabel"
+    $titlePad = [Math]::Max(0, $width - 2 - $titleText.Length)
+    $subPad = [Math]::Max(0, $width - 2 - $subText.Length)
+    $statusPad = [Math]::Max(0, $width - 2 - $statusText.Length)
+
+    Write-Host ''
+    Write-Host "$($_C.H1)$([char]0x2554)$border$([char]0x2557)$($_C.Reset)"
+    Write-Host "$($_C.H1)$([char]0x2551)$($_C.Bold)$($_C.White)$titleText$($_C.Reset)$(' ' * $titlePad)$($_C.H1)$([char]0x2551)$($_C.Reset)"
+    Write-Host "$($_C.H1)$([char]0x2551)$($_C.Dim)$subText$($_C.Reset)$(' ' * $subPad)$($_C.H1)$([char]0x2551)$($_C.Reset)"
+    Write-Host "$($_C.H1)$([char]0x2551)$StatusColor$statusText$($_C.Reset)$(' ' * $statusPad)$($_C.H1)$([char]0x2551)$($_C.Reset)"
+    Write-Host "$($_C.H1)$([char]0x255A)$border$([char]0x255D)$($_C.Reset)"
+    Write-Host ''
+}
+
+function Write-ManagerSection {
+    param(
+        [string]$Title,
+        [string]$Icon = [string][char]0x25C6
+    )
+
+    $width = Get-ManagerUiWidth
+    $prefix = if ($Icon) { " $Icon $Title " } else { " $Title " }
+    $remaining = [Math]::Max(0, $width - $prefix.Length - 1)
+    $line = [string]::new([char]0x2500, $remaining)
+
+    Write-Host ''
+    Write-Host "$($_C.H1)$prefix$($_C.Dim)$line$($_C.Reset)"
+}
+
+function Show-ManagerLoading {
+    try { Clear-Host } catch {}
+    Write-ManagerBanner -StatusLabel 'Reading current status' -StatusColor $_C.Warn
+    Write-Host "  $($_C.Dim)Checking installed metadata, registry entries, workspaces, and GitHub branch heads...$($_C.Reset)$($_C.EraseLn)"
+}
+
+function Write-ManagerMenuHeader {
+    param([Parameter(Mandatory)]$Snapshot)
+
+    try { Clear-Host } catch {}
+    $statusLabel = if ($Snapshot.AttentionCount -eq 0) { 'All monitored menu checks OK' } else { "$($Snapshot.AttentionCount) item(s) need attention" }
+    $statusColor = if ($Snapshot.AttentionCount -eq 0) { $_C.OK } else { $_C.Warn }
+    Write-ManagerBanner -StatusLabel $statusLabel -StatusColor $statusColor
+
+    Write-ManagerSection -Title 'Summary'
+    Write-Host "  $($_C.H2)Managed:$($_C.Reset) $($_C.White)$($Snapshot.TotalCount)$($_C.Reset) | $($_C.H2)Installed:$($_C.Reset) $($_C.White)$($Snapshot.InstalledCount)$($_C.Reset) | $($_C.H2)Menu OK:$($_C.Reset) $($_C.OK)$($Snapshot.MenuOkCount)$($_C.Reset) | $($_C.H2)Standalone:$($_C.Reset) $($_C.Info)$($Snapshot.StandaloneCount)$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.H2)SystemTools:$($_C.Reset) $($_C.White)$($Snapshot.SystemToolsCount)$($_C.Reset) | $($_C.H2)Workspace current:$($_C.Reset) $($_C.OK)$($Snapshot.WorkspaceCurrentCount)$($_C.Reset)/$($Snapshot.TotalCount) | $($_C.H2)Dirty-source installs:$($_C.Reset) $($_C.Warn)$($Snapshot.DirtySourceCount)$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.H2)Checked:$($_C.Reset) $($_C.Dim)$('{0:HH:mm:ss}' -f $Snapshot.CheckedAt)$($_C.Reset) | $($_C.H2)Issues:$($_C.Reset) $($_C.Dim)$($Snapshot.IssueSummary)$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)R refreshes the snapshot. Arrow keys do not rescan registry or git state.$($_C.Reset)$($_C.EraseLn)"
+}
+
+function Read-ManagerKey {
+    $keyInfo = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+    $keyChar = [char]0
+    if ($keyInfo.PSObject.Properties['KeyChar']) {
+        $keyChar = [char]$keyInfo.KeyChar
+    }
+    elseif ($keyInfo.PSObject.Properties['Character']) {
+        $keyChar = [char]$keyInfo.Character
     }
 
-    Write-Host 'Invalid selection.' -ForegroundColor Yellow
-    return $null
+    $keyName = if ($keyInfo.PSObject.Properties['Key']) {
+        [string]$keyInfo.Key
+    }
+    elseif ($keyInfo.PSObject.Properties['VirtualKeyCode']) {
+        try { [string][System.Enum]::ToObject([System.ConsoleKey], [int]$keyInfo.VirtualKeyCode) } catch { [string]$keyInfo.VirtualKeyCode }
+    }
+    else {
+        ''
+    }
+
+    [pscustomobject]@{
+        Key = $keyName
+        KeyChar = $keyChar
+        VirtualKeyCode = if ($keyInfo.PSObject.Properties['VirtualKeyCode']) { [int]$keyInfo.VirtualKeyCode } else { $null }
+    }
+}
+
+function Reset-ManagerNavigationRepeat {
+    $Script:LastManagerNavigationKey = ''
+    $Script:LastManagerNavigationAt = [DateTime]::MinValue
+}
+
+function Get-ManagerNavigationDirection {
+    param([Parameter(Mandatory)]$Key)
+
+    if ([string]$Key.Key -eq 'UpArrow' -or $Key.VirtualKeyCode -eq 38) { return 'Up' }
+    if ([string]$Key.Key -eq 'DownArrow' -or $Key.VirtualKeyCode -eq 40) { return 'Down' }
+    return ''
+}
+
+function Test-ManagerNavigationRepeat {
+    param([Parameter(Mandatory)][string]$Direction)
+
+    $now = Get-Date
+    $elapsed = ($now - $Script:LastManagerNavigationAt).TotalMilliseconds
+    if ($Script:LastManagerNavigationKey -eq $Direction -and $elapsed -lt 120) {
+        $Script:LastManagerNavigationAt = $now
+        return $true
+    }
+
+    $Script:LastManagerNavigationKey = $Direction
+    $Script:LastManagerNavigationAt = $now
+    return $false
+}
+
+function Move-ManagerSelection {
+    param(
+        [Parameter(Mandatory)][int]$Selected,
+        [Parameter(Mandatory)][int]$Count,
+        [Parameter(Mandatory)][ValidateSet('Up','Down')][string]$Direction
+    )
+
+    if ($Count -le 0) { return 0 }
+    if ($Direction -eq 'Up') {
+        if ($Selected -gt 0) { return ($Selected - 1) }
+        return ($Count - 1)
+    }
+
+    if ($Selected -lt ($Count - 1)) { return ($Selected + 1) }
+    return 0
+}
+
+function Write-ManagerMenuBlock {
+    param(
+        [Parameter(Mandatory)][object[]]$Items,
+        [Parameter(Mandatory)][int]$Selected,
+        [Parameter(Mandatory)][int]$Top
+    )
+
+    try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+
+    Write-ManagerSection -Title 'Main Menu'
+
+    for ($i = 0; $i -lt $Items.Count; $i++) {
+        $item = $Items[$i]
+        $ansi = if (-not [string]::IsNullOrWhiteSpace([string]$item.Color)) { [string]$item.Color } else { $_C.White }
+        if ($i -eq $Selected) {
+            Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)  $([char]0x276F) $($item.Label) $($_C.Reset)$($_C.EraseLn)"
+        }
+        else {
+            Write-Host "    $ansi$($item.Label)$($_C.Reset)$($_C.EraseLn)"
+        }
+    }
+
+    Write-Host "$_E[K"
+    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) navigate    Enter = select    1-9/R/Q = shortcut    Esc = exit$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "$_E[J" -NoNewline
+}
+
+function Write-ManagerToolSelectionBlock {
+    param(
+        [Parameter(Mandatory)][object[]]$Items,
+        [Parameter(Mandatory)][int]$Selected,
+        [Parameter(Mandatory)][int]$Top,
+        [Parameter(Mandatory)][string]$Prompt
+    )
+
+    try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+
+    Write-ManagerSection -Title $Prompt -Icon ''
+
+    for ($i = 0; $i -lt $Items.Count; $i++) {
+        $label = [string]$Items[$i].Label
+        if ($i -eq $Selected) {
+            Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)  $([char]0x276F) $label $($_C.Reset)$($_C.EraseLn)"
+        }
+        else {
+            Write-Host "    $($_C.Dim)$label$($_C.Reset)$($_C.EraseLn)"
+        }
+    }
+
+    Write-Host "$_E[K"
+    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) navigate    Enter = select    Esc = cancel$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "$_E[J" -NoNewline
+}
+
+function Wait-ManagerBackKey {
+    param([string]$Hint = 'Esc = back')
+
+    Write-Host ''
+    Write-Host "  $($_C.Dim)$Hint$($_C.Reset)"
+    while ($true) {
+        $key = Read-ManagerKey
+        if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
+        if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) { return }
+    }
+}
+
+function Get-ManagerRowColor {
+    param([Parameter(Mandatory)]$Row)
+
+    if ($Row.Status -eq 'Up to date' -or $Row.Status -eq 'Monitored') { return $_C.OK }
+    if ($Row.Status -eq 'Dirty-source install') { return $_C.Warn }
+    if ($Row.Menu -ne 'OK' -or $Row.Status -match 'failed|behind|missing|not installed') { return $_C.Fail }
+    return $_C.White
+}
+
+function Write-ToolsSummaryBlock {
+    param(
+        [Parameter(Mandatory)][object[]]$Rows,
+        [Parameter(Mandatory)][int]$Selected,
+        [Parameter(Mandatory)][int]$Top
+    )
+
+    try { $Host.UI.RawUI.CursorPosition = @{ X = 0; Y = $Top } } catch {}
+    Write-ManagerSection -Title 'Tools Summary'
+    Write-Host ("  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f 'Tool','Scope','In','OK','Status','Ver','Inst','Work','WorkState','Remote') -ForegroundColor Green
+    Write-Host ("  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f '----','-----','--','--','------','---','----','----','---------','------') -ForegroundColor Green
+
+    for ($i = 0; $i -lt $Rows.Count; $i++) {
+        $row = $Rows[$i]
+        $text = "  {0,-24} {1,-11} {2,-3} {3,-2} {4,-20} {5,-6} {6,-7} {7,-8} {8,-16} {9,-7}" -f $row.Tool, $row.Scope, $row.Installed, $row.Menu, $row.Status, $row.Ver, $row.Inst, $row.Work, $row.WorkState, $row.Remote
+        if ($i -eq $Selected) {
+            Write-Host "$($_C.SelBg)$($_C.SelFg)$($_C.Bold)$text$($_C.Reset)$($_C.EraseLn)"
+        }
+        else {
+            Write-Host "$((Get-ManagerRowColor -Row $row))$text$($_C.Reset)$($_C.EraseLn)"
+        }
+    }
+
+    Write-Host ''
+    Write-Host "  $($_C.Dim)Inst = installed commit; Work = workspace HEAD (* dirty); Remote = GitHub branch HEAD.$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "  $($_C.Dim)$([char]0x2191)$([char]0x2193) move    Enter = details    Esc = back$($_C.Reset)$($_C.EraseLn)"
+    Write-Host "$_E[J" -NoNewline
+}
+
+function Show-ToolsSummary {
+    param([Parameter(Mandatory)]$Snapshot)
+
+    $rows = @($Snapshot.Rows)
+    if ($rows.Count -eq 0) { return }
+
+    $selected = 0
+    try { Clear-Host } catch {}
+    Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
+    try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
+    try { [Console]::CursorVisible = $false } catch {}
+    Reset-ManagerNavigationRepeat
+
+    try {
+        while ($true) {
+            Write-ToolsSummaryBlock -Rows $rows -Selected $selected -Top $top
+            $key = Read-ManagerKey
+            $direction = Get-ManagerNavigationDirection -Key $key
+            if (-not [string]::IsNullOrWhiteSpace($direction)) {
+                if (-not (Test-ManagerNavigationRepeat -Direction $direction)) {
+                    $selected = Move-ManagerSelection -Selected $selected -Count $rows.Count -Direction $direction
+                }
+                continue
+            }
+
+            Reset-ManagerNavigationRepeat
+
+            if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return }
+            if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) {
+                try { Clear-Host } catch {}
+                Show-ToolInspectionState -State $Snapshot.States[$selected]
+                Wait-ManagerBackKey
+                try { Clear-Host } catch {}
+                Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
+                try { $top = $Host.UI.RawUI.CursorPosition.Y } catch { $top = 0 }
+                continue
+            }
+        }
+    }
+    finally {
+        try { [Console]::CursorVisible = $true } catch {}
+    }
+}
+
+function Get-MenuBudgetRows {
+    param([Parameter(Mandatory)][object[]]$Surfaces)
+
+    foreach ($group in (@($Surfaces) | Where-Object { -not [string]::IsNullOrWhiteSpace($_.BudgetGroup) } | Group-Object BudgetGroup | Sort-Object Name)) {
+        $isRootGroup = $group.Name -like '*.Root'
+        $max = ($group.Group | Where-Object { $null -ne $_.ChildCount } | Measure-Object -Property ChildCount -Maximum).Maximum
+        $count = if ($isRootGroup) { @($group.Group).Count } elseif ($null -eq $max) { 0 } else { [int]$max }
+        $remaining = 16 - $count
+        $status = if ($isRootGroup) { 'Tracked' } elseif ($count -gt 16) { 'Over limit' } elseif ($count -ge 14) { 'Near limit' } else { 'OK' }
+        [pscustomobject]@{
+            Group = $group.Name
+            Used = $count
+            Free = $remaining
+            Status = $status
+            IsRootGroup = $isRootGroup
+            Entries = @($group.Group)
+        }
+    }
+}
+
+function Get-ManagedEntriesForGroups {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string[]]$Groups
+    )
+
+    $candidates = @($Snapshot.Surfaces | Where-Object { $_.BudgetGroup -in $Groups })
+
+    foreach ($toolGroup in ($candidates | Group-Object Tool | Sort-Object Name)) {
+        $entry = @($toolGroup.Group | Sort-Object @{
+            Expression = {
+                $index = [Array]::IndexOf($Groups, [string]$_.BudgetGroup)
+                if ($index -ge 0) { $index }
+                else { 2 }
+            }
+        }, Surface | Select-Object -First 1)
+        if ($entry.Count -eq 0) { continue }
+        [pscustomobject]@{
+            Tool = $entry[0].Tool
+            Entry = $entry[0].Surface
+            Group = $entry[0].BudgetGroup
+            Visibility = $entry[0].Visibility
+            Items = $entry[0].ChildCount
+            Scope = $entry[0].Scope
+        }
+    }
+}
+
+function Get-ManagerToolDisplayName {
+    param([AllowEmptyString()][string]$Tool)
+
+    if ($Tool -eq 'SystemTools host') { return 'System Tools' }
+    return $Tool
+}
+
+function Write-MenuTargetSection {
+    param(
+        [Parameter(Mandatory)][string]$Title,
+        [Parameter(Mandatory)][object[]]$Entries,
+        [string]$Note = ''
+    )
+
+    if ($Entries.Count -eq 0) { return }
+
+    Write-Host "  $($_C.H2)$Title$($_C.Reset)  $($_C.OK)$($Entries.Count) monitored$($_C.Reset)"
+    if (-not [string]::IsNullOrWhiteSpace($Note)) {
+        Write-Host "    $($_C.Dim)$Note$($_C.Reset)"
+    }
+
+    for ($i = 0; $i -lt $Entries.Count; $i++) {
+        $entry = $Entries[$i]
+        $connector = if ($i -eq ($Entries.Count - 1)) { [string][char]0x2514 } else { [string][char]0x251C }
+        $visibility = if ($entry.Visibility -eq 'shift_only') { 'Shift only' } else { 'Normal' }
+        $items = if ($null -eq $entry.Items) { '-' } else { [string]$entry.Items }
+        $displayTool = Get-ManagerToolDisplayName -Tool $entry.Tool
+        Write-Host "    $($_C.Dim)$connector$([char]0x2500)$($_C.Reset) $($_C.Gold)$displayTool$($_C.Reset) $($_C.Dim)| Visibility: $visibility | Items: $items$($_C.Reset)"
+    }
+    Write-Host ''
+}
+
+function Get-MenuPopupBudget {
+    param([int]$Count)
+
+    $status = if ($Count -gt 16) { 'Over limit' } elseif ($Count -ge 14) { 'Near limit' } else { 'OK' }
+    [pscustomobject]@{
+        Count = $Count
+        Status = $status
+        Remaining = 16 - $Count
+    }
+}
+
+function Show-MenuStructure {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [switch]$NoWait
+    )
+
+    try { Clear-Host } catch {}
+    Write-ManagerBanner -StatusLabel 'Cached snapshot' -StatusColor $_C.Info
+    Write-ManagerSection -Title 'Menu Structure'
+
+    $groups = @(Get-MenuBudgetRows -Surfaces $Snapshot.Surfaces)
+    if ($groups.Count -eq 0) {
+        Write-Host '  No menu entries are defined.' -ForegroundColor Yellow
+        if (-not $NoWait) { Wait-ManagerBackKey }
+        return
+    }
+
+    Write-MenuTargetSection -Title 'Right-click on Desktop / empty folder space' -Entries @(Get-ManagedEntriesForGroups -Snapshot $Snapshot -Groups @('DesktopBackground.Root', 'Directory.Background.Root')) -Note 'Explorer shows both desktop-only entries and folder-background entries here.'
+    Write-MenuTargetSection -Title 'Right-click on a folder' -Entries @(Get-ManagedEntriesForGroups -Snapshot $Snapshot -Groups @('Directory.Folder.Root', 'SystemTools.Root'))
+    Write-MenuTargetSection -Title 'Right-click on a PNG file' -Entries @(Get-ManagedEntriesForGroups -Snapshot $Snapshot -Groups @('PngFile.Root', 'File.Root'))
+
+    Write-Host "  $($_C.H2)Inside System Tools$($_C.Reset)"
+    foreach ($menu in @($Snapshot.SystemToolsMenus)) {
+        $children = @($menu.Children)
+        if ($children.Count -eq 0) { continue }
+        $rootBudget = Get-MenuPopupBudget -Count $children.Count
+        $rootColor = if ($rootBudget.Status -eq 'OK') { $_C.OK } elseif ($rootBudget.Status -eq 'Near limit') { $_C.Warn } else { $_C.Fail }
+        $rootRemainingText = if ($rootBudget.Remaining -lt 0) { "$([Math]::Abs($rootBudget.Remaining)) over" } else { "$($rootBudget.Remaining) free" }
+        Write-Host "    $($_C.Gold)$($menu.Label)$($_C.Reset)  $rootColor$($rootBudget.Status)$($_C.Reset)  $($_C.Dim)(root popup $($rootBudget.Count)/16, $rootRemainingText)$($_C.Reset)"
+        if (-not [string]::IsNullOrWhiteSpace([string]$menu.Note)) {
+            Write-Host "      $($_C.Dim)$($menu.Note)$($_C.Reset)"
+        }
+        for ($i = 0; $i -lt $children.Count; $i++) {
+            $child = $children[$i]
+            $connector = if ($i -eq ($children.Count - 1)) { [string][char]0x2514 } else { [string][char]0x251C }
+            $label = [string]$child.Label
+            if ($child.IsSubmenu) {
+                $childBudget = Get-MenuPopupBudget -Count ([int]$child.Items)
+                $childColor = if ($childBudget.Status -eq 'OK') { $_C.OK } elseif ($childBudget.Status -eq 'Near limit') { $_C.Warn } else { $_C.Fail }
+                $childRemainingText = if ($childBudget.Remaining -lt 0) { "$([Math]::Abs($childBudget.Remaining)) over" } else { "$($childBudget.Remaining) free" }
+                Write-Host "      $($_C.Dim)$connector$([char]0x2500)$($_C.Reset) $($_C.Gold)$label$($_C.Reset) $childColor$($childBudget.Status)$($_C.Reset) $($_C.Dim)(submenu popup $($childBudget.Count)/16, $childRemainingText)$($_C.Reset)"
+            }
+            else {
+                Write-Host "      $($_C.Dim)$connector$([char]0x2500)$($_C.Reset) $($_C.Gold)$label$($_C.Reset) $($_C.Dim)- direct item$($_C.Reset)"
+            }
+        }
+        Write-Host ''
+    }
+
+    Write-Host "  $($_C.Dim)Each popup has its own 16-item limit. Root popup counts branches/direct items; each submenu counts its own items.$($_C.Reset)"
+    Write-Host "  $($_C.Dim)Separators are free. A 4-item test submenu under desktop System Tools rendered normally because each popup stayed under 16.$($_C.Reset)"
+    Write-Host "  $($_C.Dim)Menu OK means the expected registry entry exists. Shift only means the entry appears only with Shift + right-click.$($_C.Reset)"
+
+    if (-not $NoWait) { Wait-ManagerBackKey }
+}
+
+function Show-MenuEntries {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [switch]$NoWait
+    )
+    Show-MenuStructure -Snapshot $Snapshot -NoWait:$NoWait
+}
+
+function Read-ManagerToolSelection {
+    param([Parameter(Mandatory)][string]$Prompt)
+
+    $items = @($Script:Tools)
+    if ($items.Count -eq 0) { return $null }
+
+    $selected = 0
+    try { Clear-Host } catch {}
+    Write-ManagerBanner -StatusLabel 'Select tool' -StatusColor $_C.Info
+    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
+    try { [Console]::CursorVisible = $false } catch {}
+    Reset-ManagerNavigationRepeat
+
+    try {
+        while ($true) {
+            Write-ManagerToolSelectionBlock -Items $items -Selected $selected -Top $menuTop -Prompt $Prompt
+            $key = Read-ManagerKey
+            $direction = Get-ManagerNavigationDirection -Key $key
+            if (-not [string]::IsNullOrWhiteSpace($direction)) {
+                if (-not (Test-ManagerNavigationRepeat -Direction $direction)) {
+                    $selected = Move-ManagerSelection -Selected $selected -Count $items.Count -Direction $direction
+                }
+                continue
+            }
+
+            Reset-ManagerNavigationRepeat
+
+            if ([string]$key.Key -eq 'Enter' -or $key.VirtualKeyCode -eq 13) { return $items[$selected] }
+            if ([string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) { return $null }
+
+            $char = ([string]$key.KeyChar).ToUpperInvariant()
+            if ($char -match '^[1-9]$') {
+                $index = [int]$char - 1
+                if ($index -ge 0 -and $index -lt $items.Count) { return $items[$index] }
+            }
+            if ($char -eq 'Q') { return $null }
+        }
+    }
+    finally {
+        try { [Console]::CursorVisible = $true } catch {}
+    }
+}
+
+function Read-ManagerMenuSelection {
+    param(
+        [Parameter(Mandatory)][object[]]$Items,
+        [Parameter(Mandatory)]$Snapshot
+    )
+
+    $selected = 0
+    Write-ManagerMenuHeader -Snapshot $Snapshot
+    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
+    try { [Console]::CursorVisible = $false } catch {}
+    Reset-ManagerNavigationRepeat
+
+    try {
+        while ($true) {
+            Write-ManagerMenuBlock -Items $Items -Selected $selected -Top $menuTop
+            $key = Read-ManagerKey
+            $direction = Get-ManagerNavigationDirection -Key $key
+            if (-not [string]::IsNullOrWhiteSpace($direction)) {
+                if (-not (Test-ManagerNavigationRepeat -Direction $direction)) {
+                    $selected = Move-ManagerSelection -Selected $selected -Count $Items.Count -Direction $direction
+                }
+                continue
+            }
+
+            Reset-ManagerNavigationRepeat
+
+            switch ([string]$key.Key) {
+                'Enter' { return $Items[$selected].Action }
+                'Escape' { return 'Quit' }
+                'ResizeEvent' {
+                    Write-ManagerMenuHeader -Snapshot $Snapshot
+                    try { $menuTop = $Host.UI.RawUI.CursorPosition.Y } catch { $menuTop = 0 }
+                    continue
+                }
+            }
+
+            if ($key.VirtualKeyCode -eq 13) { return $Items[$selected].Action }
+            if ($key.VirtualKeyCode -eq 27) { return 'Quit' }
+
+            $char = ([string]$key.KeyChar).ToUpperInvariant()
+            if (-not [string]::IsNullOrWhiteSpace($char)) {
+                $match = $Items | Where-Object { ([string]$_.Key).ToUpperInvariant() -eq $char } | Select-Object -First 1
+                if ($match) { return $match.Action }
+            }
+        }
+    }
+    finally {
+        try { [Console]::CursorVisible = $true } catch {}
+    }
 }
 
 function Show-Menu {
-    do {
-        Show-Status
-        Write-Host ''
-        Write-Host '[1] Install / repair all tools'
-        Write-Host '[2] Update all installed tools'
-        Write-Host '[3] Install / repair selected tool'
-        Write-Host '[4] Update selected tool'
-        Write-Host '[5] Verify context menu entries'
-        Write-Host '[R] Refresh status'
-        Write-Host '[Q] Quit'
-        Write-Host ''
+    if (-not (Import-ManagerUi)) {
+        throw 'PS_UI_Blueprint.psm1 was not found under .codex\tools. Install/restore the canonical blueprint first.'
+    }
 
-        $choice = Read-Host 'Choose an action'
-        if ($null -eq $choice) { return }
-        $choice = $choice.Trim()
+    Initialize-TuiHost
+    try {
+        Show-ManagerLoading
+        $snapshot = New-ManagerMenuSnapshot
 
-        switch -Regex ($choice) {
-            '^1$' {
-                Invoke-InstallAll
-                if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                continue
+        :menuLoop do {
+            $items = @(
+                [pscustomobject]@{ Key = '1'; Label = 'Tools Summary'; Action = 'ToolsSummary'; Color = $_C.Info },
+                [pscustomobject]@{ Key = '2'; Label = 'Menu Structure'; Action = 'MenuStructure'; Color = $_C.OK },
+                [pscustomobject]@{ Key = '3'; Label = 'Update selected tool'; Action = 'UpdateTool'; Color = $_C.Warn },
+                [pscustomobject]@{ Key = '4'; Label = 'Update all installed tools'; Action = 'UpdateAll'; Color = $_C.Warn },
+                [pscustomobject]@{ Key = '5'; Label = 'Install / repair selected tool'; Action = 'RepairTool'; Color = $_C.Accent },
+                [pscustomobject]@{ Key = '6'; Label = 'Install / repair all tools'; Action = 'InstallAll'; Color = $_C.Accent },
+                [pscustomobject]@{ Key = 'R'; Label = 'Refresh status snapshot'; Action = 'Refresh'; Color = $_C.OK },
+                [pscustomobject]@{ Key = 'Q'; Label = 'Exit'; Action = 'Quit'; Color = $_C.Dim }
+            )
+
+            $choice = Read-ManagerMenuSelection -Items $items -Snapshot $snapshot
+
+            switch ($choice) {
+                'InstallAll' {
+                    Restore-TuiHost
+                    Invoke-InstallAll
+                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
+                    Initialize-TuiHost
+                    Show-ManagerLoading
+                    $snapshot = New-ManagerMenuSnapshot
+                    continue menuLoop
+                }
+                'UpdateAll' {
+                    Restore-TuiHost
+                    Invoke-UpdateAll
+                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
+                    Initialize-TuiHost
+                    Show-ManagerLoading
+                    $snapshot = New-ManagerMenuSnapshot
+                    continue menuLoop
+                }
+                'RepairTool' {
+                    $tool = Read-ToolChoice -Prompt 'Install / repair which tool?'
+                    if (-not $tool) { continue menuLoop }
+                    Restore-TuiHost
+                    Invoke-ToolInstallOrRepair -Name $tool.Name -Repair
+                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
+                    Initialize-TuiHost
+                    Show-ManagerLoading
+                    $snapshot = New-ManagerMenuSnapshot
+                    continue menuLoop
+                }
+                'UpdateTool' {
+                    $tool = Read-ToolChoice -Prompt 'Update which tool?'
+                    if (-not $tool) { continue menuLoop }
+                    Restore-TuiHost
+                    Invoke-ToolUpdate -Name $tool.Name
+                    if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
+                    Initialize-TuiHost
+                    Show-ManagerLoading
+                    $snapshot = New-ManagerMenuSnapshot
+                    continue menuLoop
+                }
+                'ToolsSummary' {
+                    Show-ToolsSummary -Snapshot $snapshot
+                    continue menuLoop
+                }
+                'MenuStructure' {
+                    Show-MenuStructure -Snapshot $snapshot
+                    continue menuLoop
+                }
+                'Refresh' {
+                    Show-ManagerLoading
+                    $snapshot = New-ManagerMenuSnapshot
+                    continue menuLoop
+                }
+                'Quit' { return }
             }
-            '^2$' {
-                Invoke-UpdateAll
-                if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                continue
-            }
-            '^3$' {
-                $tool = Read-ToolChoice -Prompt 'Install / repair which tool?'
-                if ($tool) { Invoke-ToolInstallOrRepair -Name $tool.Name -Repair }
-                if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                continue
-            }
-            '^4$' {
-                $tool = Read-ToolChoice -Prompt 'Update which tool?'
-                if ($tool) { Invoke-ToolUpdate -Name $tool.Name }
-                if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                continue
-            }
-            '^5$' {
-                Invoke-VerifyMenu
-                if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
-                continue
-            }
-            '^(r|refresh)$' { continue }
-        }
-    } while ($choice -notmatch '^(q|quit|exit)$')
+        } while ($true)
+    }
+    finally {
+        Restore-TuiHost
+    }
 }
 
 switch ($Action) {
@@ -526,6 +1523,11 @@ switch ($Action) {
     'UpdateAll' { Invoke-UpdateAll }
     'UpdateTool' { Invoke-ToolUpdate -Name $ToolName }
     'VerifyMenu' { Invoke-VerifyMenu }
+    'InspectTool' { Show-ToolInspection -Name $ToolName }
+    'Surfaces' { Show-Surfaces }
+    'MenuEntries' { Show-MenuStructure -Snapshot (New-ManagerMenuSnapshot) -NoWait }
+    'MenuStructure' { Show-MenuStructure -Snapshot (New-ManagerMenuSnapshot) -NoWait }
+    'Budgets' { Show-Budgets }
     'Menu' { Show-Menu }
 }
 

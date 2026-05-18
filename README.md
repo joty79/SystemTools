@@ -18,7 +18,7 @@
 | # | Tool | Description |
 |:-:|------|-------------|
 | 🔁 | **[Restart Explorer](#-restart-explorer)** | Kill & cleanly restart `explorer.exe` — reopens target folder without zombie processes |
-| 🧭 | **[Tool Manager / Updates](#-tool-manager--updates)** | One menu for installing, repairing, checking, and updating the SystemTools family |
+| 🧭 | **[Tool Manager / Updates](#-tool-manager--updates)** | One menu for monitoring, inspecting, repairing, and updating managed Windows tools |
 | 🛡️ | **[PSRemoting Manager](#️-psremoting-manager)** | Interactive UI to safely manage WinRM and TrustedHosts |
 | 📂 | **[PATH Manager](#-path-manager)** | Interactive toggle of any folder in/out of User or Machine `PATH` with live ENV snapshot |
 | 🔄 | **[Refresh Shell](#-refresh-shell)** | Broadcast shell & environment refresh signals — no Explorer restart needed |
@@ -49,19 +49,25 @@ System Tools
 Safe Mode Options
 ├── Boot in Normal Mode
 └── Boot in Safe Mode
+
+ContextLens
+├── OCR image to TXT
+├── OCR clipboard to TXT
+├── Save clipboard image
+└── Open ContextLens Manager
 ```
 
 On single-file targets such as `.md`, `System Tools > Windows` is intentionally limited to file-safe tools: `Take Ownership` and `Who is using this?`.
 Safe Mode is intentionally a separate top-level context menu while `SystemTools` stays under the Windows 10 static cascade limit.
 `.exe` files can still keep their own top-level `Firewall Rules` entry outside `System Tools`.
 
-Planned additions such as `Make Symlink / Junction` can be added later under `Windows` without merging every tool into one giant repo.
+Standalone tools such as `mklink` and `ContextLens`, plus top-level surfaces such as `Safe Mode Options`, stay outside the `System Tools` cascade when needed, but they are still monitored by the same manager.
 
 ---
 
 ## 🧭 Tool Manager / Updates
 
-> Install, repair, check, and update the small tools that live under the shared `System Tools` menu.
+> Monitor, inspect, repair, and update the managed Windows tool family, including entries that live outside the shared `System Tools` menu.
 
 ### Usage
 
@@ -75,15 +81,30 @@ Planned additions such as `Make Symlink / Junction` can be added later under `Wi
 .\SystemToolsManager.ps1 -Action RepairAll
 .\SystemToolsManager.ps1 -Action UpdateAll
 .\SystemToolsManager.ps1 -Action VerifyMenu
+.\SystemToolsManager.ps1 -Action InspectTool -ToolName SystemCleanup
+.\SystemToolsManager.ps1 -Action InspectTool -ToolName ContextLens
+.\SystemToolsManager.ps1 -Action MenuStructure
+.\SystemToolsManager.ps1 -Action Budgets
 ```
 
-The manager reads `.assets\systemtools-family.json`, so the family list can grow without rewriting the manager script. For local repair/install it prefers the matching repo checkout discovered from `.codex\REPO_ROOTS.psd1`; for updates it uses each installed tool's generated `Install.ps1 -Action UpdateGitHub` path and compares `state\install-meta.json` commits against GitHub `master`.
+The manager reads `.assets\systemtools-family.json`, so the managed list can grow without rewriting the manager script. Its interactive menu follows the WinAppManager-style composition: a versioned bordered banner, compact summary, colored action list, cached status snapshot, and in-place arrow-menu repaint. For local repair/install it prefers the matching repo checkout discovered from `.codex\REPO_ROOTS.psd1`; for updates it uses each installed tool's generated `Install.ps1 -Action UpdateGitHub` path and compares `state\install-meta.json` commits against GitHub `master`.
+
+The status table separates installed provenance from workspace state:
+
+| Column | Meaning |
+|--------|---------|
+| `Inst` | Commit recorded in the installed copy's `state\install-meta.json` |
+| `Work` | Current local repo checkout commit; `*` means that workspace is dirty |
+| `Remote` | Latest GitHub branch commit |
+| `Monitored` | Host-owned or registry-only surface with no standalone installer |
+| `Dirty-source install` | The installed copy was created from an uncommitted workspace, so commit-only status may look behind even when installed files already include the later committed content |
 
 | Action | What it does |
 |--------|--------------|
 | `InstallAll` / `RepairAll` | Runs each repo's generated installer from the local checkout when available |
 | `UpdateAll` | Updates installed tools from GitHub through their generated installers |
-| `VerifyMenu` | Checks the expected `System Tools` registry child entries without changing layout |
+| `Tools Summary` | Navigable installed/workspace/remote table; Enter opens the selected tool's details without changing anything |
+| `Menu Structure` | Directory-tree style view grouped by human right-click targets, with monitored tools, entry visibility, menu verification, and per-popup 16-item budget status |
 
 ---
 
