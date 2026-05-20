@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-21 (Selected remediation chains can auto-follow safe next steps)
+
+- Date: 2026-05-21
+- Problem: Fixing one tool could require repeated manual `W`, `U`, and `I` selections even though each completed action made the next safe `Best next` action obvious for the same selected row.
+- Root cause: The manager treated every selected action as an isolated command. It refreshed the selected row after an action but did not continue through the safe remediation sequence.
+- Guardrail/rule: After the user confirms the initial selected `U`, `W`, or `I`, the manager may auto-follow safe next recommendations for that same tool only when the recommendation maps to `W`, `U`, or `I`. Stop automatically at `No action needed`, failed actions, max-step guard, or any manual/user-review recommendation such as `Enter`.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; synthetic auto remediation chain smoke completed `W -> U -> I -> No action needed`; synthetic manual-stop smoke confirmed dirty/manual review guidance does not auto-run actions; `git diff --check` passed.
+
 ### Entry - 2026-05-21 (Clone should explain existing unusable folders)
 
 - Date: 2026-05-21

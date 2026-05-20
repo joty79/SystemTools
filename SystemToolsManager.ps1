@@ -532,6 +532,27 @@ function Update-ManagerMenuSnapshotTool {
     return New-ManagerMenuSnapshotFromParts -States $states -Rows $rows -Surfaces @($Snapshot.Surfaces) -SystemToolsMenus @($Snapshot.SystemToolsMenus)
 }
 
+function Get-ManagerSnapshotToolEntry {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string]$ToolName
+    )
+
+    $states = @($Snapshot.States)
+    $rows = @($Snapshot.Rows)
+    for ($i = 0; $i -lt $states.Count; $i++) {
+        if ([string]$states[$i].Name -eq $ToolName) {
+            return [pscustomobject]@{
+                Index = $i
+                State = $states[$i]
+                Row = $rows[$i]
+            }
+        }
+    }
+
+    return $null
+}
+
 function Get-RepoSearchRoots {
     $roots = [System.Collections.Generic.List[string]]::new()
     $defaultScripts = Join-Path $env:USERPROFILE 'scripts'
@@ -1528,10 +1549,12 @@ function Invoke-ManagerExternalAction {
         [switch]$NoPause,
         [switch]$RelaunchManagerAfter,
         [AllowEmptyString()][string]$ConfirmMessage = '',
-        [AllowEmptyString()][string]$RefreshToolName = ''
+        [AllowEmptyString()][string]$RefreshToolName = '',
+        [switch]$AutoFollowRecommendations
     )
 
     $Script:LastManagerOperationSucceeded = $false
+    $actionWasConfirmed = $false
     Restore-TuiHost
     try {
         if (-not [string]::IsNullOrWhiteSpace($ConfirmMessage)) {
@@ -1539,8 +1562,12 @@ function Invoke-ManagerExternalAction {
                 Write-Host 'Cancelled.' -ForegroundColor Yellow
                 return
             }
+            $actionWasConfirmed = $true
         }
         & $Operation
+        if ($AutoFollowRecommendations -and $actionWasConfirmed -and -not [string]::IsNullOrWhiteSpace($RefreshToolName)) {
+            Invoke-ManagerAutoFollowRecommendations -ToolName $RefreshToolName
+        }
         if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
     }
     finally {
@@ -1561,6 +1588,45 @@ function Invoke-ManagerExternalAction {
     else {
         $Script:ManagerMenuSnapshot = New-ManagerMenuSnapshot
     }
+}
+
+function Invoke-ManagerAutoFollowRecommendations {
+    param([Parameter(Mandatory)][string]$ToolName)
+
+    if (-not $Script:LastManagerOperationSucceeded) { return }
+    if ($null -eq $Script:ManagerMenuSnapshot) { return }
+
+    $maxSteps = 6
+    for ($step = 1; $step -le $maxSteps; $step++) {
+        $Script:ManagerMenuSnapshot = Update-ManagerMenuSnapshotTool -Snapshot $Script:ManagerMenuSnapshot -ToolName $ToolName
+        $entry = Get-ManagerSnapshotToolEntry -Snapshot $Script:ManagerMenuSnapshot -ToolName $ToolName
+        if ($null -eq $entry) { return }
+
+        $next = Get-ManagerRecommendedAction -State $entry.State -Row $entry.Row
+        if ($next.Action -eq 'None') {
+            Write-Host ''
+            Write-Host "Auto next: no action needed for $($entry.State.Label)." -ForegroundColor Green
+            return
+        }
+        if ($next.Action -eq 'Stop') {
+            Write-Host ''
+            Write-Host "Auto next stopped: $($next.Guidance.Recommendation)" -ForegroundColor Yellow
+            Write-Host $next.Guidance.Reason -ForegroundColor DarkGray
+            return
+        }
+
+        Write-Host ''
+        Write-Host "Auto next: $($next.Guidance.Recommendation)" -ForegroundColor Cyan
+        Write-Host $next.Guidance.Reason -ForegroundColor DarkGray
+        Invoke-ManagerToolRecommendedAction -ToolName $ToolName -Action $next.Action
+        if (-not $Script:LastManagerOperationSucceeded) {
+            Write-Host "Auto next stopped after $($entry.State.Label) action failed." -ForegroundColor Yellow
+            return
+        }
+    }
+
+    Write-Host ''
+    Write-Host "Auto next stopped: maximum follow-up step count reached for $ToolName." -ForegroundColor Yellow
 }
 
 function Confirm-ManagerAction {
@@ -1743,6 +1809,48 @@ function Get-ManagerActionGuidance {
         Reason = $reason
         GitNote = $gitNote
         Color = $color
+    }
+}
+
+function Get-ManagerRecommendedAction {
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row
+    )
+
+    $guidance = Get-ManagerActionGuidance -State $State -Row $Row
+    $action = if ($guidance.Recommendation -like 'Press W *') {
+        'WorkspaceUpdate'
+    }
+    elseif ($guidance.Recommendation -like 'Press U *') {
+        'Update'
+    }
+    elseif ($guidance.Recommendation -like 'Press I *') {
+        'InstallRepair'
+    }
+    elseif ($guidance.Recommendation -eq 'No action needed' -or $guidance.Recommendation -eq 'No installer action') {
+        'None'
+    }
+    else {
+        'Stop'
+    }
+
+    [pscustomobject]@{
+        Action = $action
+        Guidance = $guidance
+    }
+}
+
+function Invoke-ManagerToolRecommendedAction {
+    param(
+        [Parameter(Mandatory)][string]$ToolName,
+        [Parameter(Mandatory)][ValidateSet('WorkspaceUpdate','Update','InstallRepair')]$Action
+    )
+
+    switch ($Action) {
+        'WorkspaceUpdate' { Invoke-ToolWorkspaceUpdate -Name $ToolName }
+        'Update' { Invoke-ToolUpdate -Name $ToolName }
+        'InstallRepair' { Invoke-ToolInstallOrRepair -Name $ToolName -Repair }
     }
 }
 
@@ -2191,7 +2299,8 @@ function Show-ToolsSummary {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
                 $confirm = Get-ManagerSelectedActionPrompt -Action Update -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolUpdate -Name $toolName }
+                $Script:ManagerMenuSnapshot = $Snapshot
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -AutoFollowRecommendations:(!$isSelfAction) -Operation { Invoke-ToolUpdate -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2201,7 +2310,8 @@ function Show-ToolsSummary {
             if ($char -eq 'W') {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $confirm = Get-ManagerSelectedActionPrompt -Action WorkspaceUpdate -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolWorkspaceUpdate -Name $toolName }
+                $Script:ManagerMenuSnapshot = $Snapshot
+                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -RefreshToolName $toolName -AutoFollowRecommendations -Operation { Invoke-ToolWorkspaceUpdate -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2212,7 +2322,8 @@ function Show-ToolsSummary {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
                 $confirm = Get-ManagerSelectedActionPrompt -Action InstallRepair -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                $Script:ManagerMenuSnapshot = $Snapshot
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -AutoFollowRecommendations:(!$isSelfAction) -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
