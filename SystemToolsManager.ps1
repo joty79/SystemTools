@@ -1,7 +1,7 @@
 #requires -version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','VerifyMenu','InspectTool','Surfaces','MenuEntries','MenuStructure','Budgets')]
+    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','UpdateWorkspaceTool','VerifyMenu','InspectTool','Surfaces','MenuEntries','MenuStructure','Budgets')]
     [string]$Action = 'Menu',
     [AllowEmptyString()]
     [string]$ToolName = '',
@@ -73,11 +73,24 @@ function Get-ObjectProperty {
     )
 
     if ($null -eq $Object) { return $Default }
-    if ($Object.PSObject.Properties.Name -contains $Name) {
+    if (Test-ObjectProperty -Object $Object -Name $Name) {
         $value = $Object.$Name
         if ($null -ne $value) { return $value }
     }
     return $Default
+}
+
+function Test-ObjectProperty {
+    param(
+        $Object,
+        [Parameter(Mandatory)][string]$Name
+    )
+
+    if ($null -eq $Object) { return $false }
+    foreach ($property in @($Object.PSObject.Properties)) {
+        if ($property.Name -eq $Name) { return $true }
+    }
+    return $false
 }
 
 function Get-ListProperty {
@@ -283,7 +296,7 @@ function Convert-RegistryPathForProvider {
     param([Parameter(Mandatory)][string]$Path)
 
     if ($Path.StartsWith('HKCU\', [StringComparison]::OrdinalIgnoreCase)) {
-        return 'HKCU:\' + $Path.Substring(5)
+        return 'Registry::HKEY_CURRENT_USER\' + $Path.Substring(5)
     }
     if ($Path.StartsWith('HKCR\', [StringComparison]::OrdinalIgnoreCase)) {
         return 'Registry::HKEY_CLASSES_ROOT\' + $Path.Substring(5)
@@ -300,7 +313,7 @@ function Get-RegistryChildEntries {
     foreach ($child in (Get-ChildItem -LiteralPath $providerPath | Sort-Object PSChildName)) {
         $item = Get-Item -LiteralPath $child.PSPath
         $props = Get-ItemProperty -LiteralPath $child.PSPath
-        $label = if ($props.PSObject.Properties.Name -contains 'MUIVerb' -and -not [string]::IsNullOrWhiteSpace([string]$props.MUIVerb)) {
+        $label = if ((Test-ObjectProperty -Object $props -Name 'MUIVerb') -and -not [string]::IsNullOrWhiteSpace([string]$props.MUIVerb)) {
             [string]$props.MUIVerb
         }
         else {
@@ -315,7 +328,7 @@ function Get-RegistryChildEntries {
             Label = $label
             Items = $childCount
             IsSubmenu = $childCount -gt 0
-            Visibility = if ($props.PSObject.Properties.Name -contains 'Extended') { 'Shift only' } else { 'Normal' }
+            Visibility = if (Test-ObjectProperty -Object $props -Name 'Extended') { 'Shift only' } else { 'Normal' }
         }
     }
 }
@@ -365,8 +378,8 @@ function Get-ToolState {
         try { $meta = Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json } catch { $meta = $null }
     }
 
-    $localCommit = if ($meta -and $meta.PSObject.Properties.Name -contains 'github_commit') { [string]$meta.github_commit } else { '' }
-    $installedSourceDirty = if ($meta -and $meta.PSObject.Properties.Name -contains 'source_dirty') { [bool]$meta.source_dirty } else { $false }
+    $localCommit = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'github_commit')) { [string]$meta.github_commit } else { '' }
+    $installedSourceDirty = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'source_dirty')) { [bool]$meta.source_dirty } else { $false }
     $remoteCommit = Get-RemoteCommit -Repo $Tool.Repo -Branch $Tool.Branch
     $workspace = Get-WorkspaceState -Tool $Tool
     $menuState = Get-RegistryMenuState -Tool $Tool
@@ -415,11 +428,11 @@ function Get-ToolState {
         InstallerPath = $installerPath
         InstallMetaPath = $metaPath
         Installed = $installed
-        Version = if ($meta -and $meta.PSObject.Properties.Name -contains 'app_version') { [string]$meta.app_version } else { '-' }
-        PackageSource = if ($meta -and $meta.PSObject.Properties.Name -contains 'package_source') { [string]$meta.package_source } else { '-' }
-        SourcePath = if ($meta -and $meta.PSObject.Properties.Name -contains 'source_path') { [string]$meta.source_path } else { '-' }
-        LastAction = if ($meta -and $meta.PSObject.Properties.Name -contains 'last_action') { [string]$meta.last_action } else { '-' }
-        InstalledUtc = if ($meta -and $meta.PSObject.Properties.Name -contains 'installed_utc') { [string]$meta.installed_utc } else { '-' }
+        Version = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'app_version')) { [string]$meta.app_version } else { '-' }
+        PackageSource = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'package_source')) { [string]$meta.package_source } else { '-' }
+        SourcePath = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'source_path')) { [string]$meta.source_path } else { '-' }
+        LastAction = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'last_action')) { [string]$meta.last_action } else { '-' }
+        InstalledUtc = if ($meta -and (Test-ObjectProperty -Object $meta -Name 'installed_utc')) { [string]$meta.installed_utc } else { '-' }
         InstalledCommit = $localCommit
         InstalledSourceDirty = $installedSourceDirty
         WorkspacePath = $workspace.Path
@@ -762,6 +775,55 @@ function Invoke-ToolUpdate {
     $Script:LastManagerOperationSucceeded = $true
 }
 
+function Invoke-ToolWorkspaceUpdate {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $Script:LastManagerOperationSucceeded = $false
+    $tool = Get-ToolByName -Name $Name
+    $state = Get-ToolState -Tool $tool
+    if ([string]::IsNullOrWhiteSpace([string]$state.WorkspacePath) -or -not (Test-Path -LiteralPath $state.WorkspacePath -PathType Container)) {
+        Write-Host "Skipping $($tool.Label): no local workspace found." -ForegroundColor Yellow
+        return
+    }
+    if ($state.WorkspaceStatus -eq 'No git') {
+        Write-Host "Skipping $($tool.Label): workspace is not a Git repo." -ForegroundColor Yellow
+        return
+    }
+    if ($state.WorkspaceStatus -match 'dirty') {
+        Write-Host "Skipping $($tool.Label): workspace has uncommitted changes. Review it first with Enter." -ForegroundColor Yellow
+        return
+    }
+
+    $currentBranch = Get-GitValue -RepoPath $state.WorkspacePath -Arguments @('rev-parse', '--abbrev-ref', 'HEAD')
+    if ([string]::IsNullOrWhiteSpace($currentBranch) -or $currentBranch -eq 'HEAD') {
+        Write-Host "Skipping $($tool.Label): workspace is detached or branch could not be detected." -ForegroundColor Yellow
+        return
+    }
+    if ($currentBranch -ne $tool.Branch) {
+        Write-Host "Skipping $($tool.Label): workspace is on branch '$currentBranch', expected '$($tool.Branch)'." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ''
+    Write-Host "Updating workspace for $($tool.Label)..." -ForegroundColor Cyan
+    Write-Host "Workspace: $($state.WorkspacePath)" -ForegroundColor DarkGray
+    & git.exe -C $state.WorkspacePath fetch --prune origin $tool.Branch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "$($tool.Label) workspace fetch failed with exit code $LASTEXITCODE." -ForegroundColor Red
+        return
+    }
+
+    & git.exe -C $state.WorkspacePath merge --ff-only "origin/$($tool.Branch)"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "$($tool.Label) workspace fast-forward failed with exit code $LASTEXITCODE." -ForegroundColor Red
+        Write-Host 'No install or repair was run. Open Git review and inspect the workspace before continuing.' -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "$($tool.Label) workspace update completed." -ForegroundColor Green
+    $Script:LastManagerOperationSucceeded = $true
+}
+
 function Invoke-ToolGitCloneInstall {
     param(
         [Parameter(Mandatory)]$Tool,
@@ -1025,7 +1087,7 @@ function Get-ManagerAppVersion {
 
     try {
         $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json
-        if ($metadata.PSObject.Properties.Name -contains 'version' -and -not [string]::IsNullOrWhiteSpace([string]$metadata.version)) {
+        if ((Test-ObjectProperty -Object $metadata -Name 'version') -and -not [string]::IsNullOrWhiteSpace([string]$metadata.version)) {
             return [string]$metadata.version
         }
     }
@@ -1331,12 +1393,19 @@ function Invoke-ManagerExternalAction {
     param(
         [Parameter(Mandatory)][scriptblock]$Operation,
         [switch]$NoPause,
-        [switch]$RelaunchManagerAfter
+        [switch]$RelaunchManagerAfter,
+        [AllowEmptyString()][string]$ConfirmMessage = ''
     )
 
     $Script:LastManagerOperationSucceeded = $false
     Restore-TuiHost
     try {
+        if (-not [string]::IsNullOrWhiteSpace($ConfirmMessage)) {
+            if (-not (Confirm-ManagerAction -Message $ConfirmMessage)) {
+                Write-Host 'Cancelled.' -ForegroundColor Yellow
+                return
+            }
+        }
         & $Operation
         if (-not $NoPause) { Read-Host 'Press Enter to continue' | Out-Null }
     }
@@ -1353,6 +1422,27 @@ function Invoke-ManagerExternalAction {
 
     Show-ManagerLoading
     $Script:ManagerMenuSnapshot = New-ManagerMenuSnapshot
+}
+
+function Confirm-ManagerAction {
+    param([Parameter(Mandatory)][string]$Message)
+
+    Write-Host ''
+    Write-Host $Message -ForegroundColor Yellow
+    Write-Host 'Press Y or N (no Enter needed): ' -ForegroundColor DarkGray -NoNewline
+
+    while ($true) {
+        $key = [Console]::ReadKey($true)
+        $char = ([string]$key.KeyChar).ToUpperInvariant()
+        if ($char -eq 'Y') {
+            Write-Host 'Y' -ForegroundColor Green
+            return $true
+        }
+        if ($char -eq 'N' -or [string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) {
+            Write-Host 'N' -ForegroundColor Red
+            return $false
+        }
+    }
 }
 
 function Get-ManagerRowColor {
@@ -1441,16 +1531,28 @@ function Get-ManagerActionGuidance {
         $gitNote = if ($Row.WorkState -eq 'No workspace') { 'Install will clone/use package source; local workspace is missing.' } else { 'Install uses local checkout when available.' }
         $color = $_C.Fail
     }
-    elseif ($Row.Menu -ne 'OK') {
-        $recommendation = 'Press I to repair selected'
-        $reason = 'Installed files exist, but expected context-menu registry entries are not OK.'
-        $gitNote = 'Repair uses local checkout when available; inspect dirty workspace first.'
-        $color = $_C.Warn
-    }
     elseif ($Row.Status -eq 'Installed behind') {
         $recommendation = 'Press U to update selected'
         $reason = 'Installed metadata is behind the latest GitHub branch commit.'
-        $gitNote = 'Update uses GitHub/latest and does not touch local workspace files.'
+        $gitNote = if ($Row.WorkState -eq 'Different') { 'U updates the installed copy from GitHub. W updates only the local workspace first.' } else { 'Update uses GitHub/latest and does not touch local workspace files.' }
+        $color = $_C.Warn
+    }
+    elseif ($Row.Menu -ne 'OK') {
+        if ($Row.WorkState -eq 'Different') {
+            $recommendation = 'Press U to repair from GitHub'
+            $reason = 'Menu entries are missing, and the local workspace is not at the GitHub branch head.'
+            $gitNote = 'U repairs/updates installed files from GitHub. W updates only the workspace if you want local repair afterward.'
+        }
+        elseif ($Row.WorkState -match 'dirty') {
+            $recommendation = 'Press Enter to review dirty workspace'
+            $reason = 'Menu entries are missing, but local repair would use uncommitted workspace files.'
+            $gitNote = 'Use U for GitHub/latest repair, or review/commit the workspace before I.'
+        }
+        else {
+            $recommendation = 'Press I to repair selected'
+            $reason = 'Installed files exist, but expected context-menu registry entries are not OK.'
+            $gitNote = 'Repair uses local checkout when available; inspect dirty workspace first.'
+        }
         $color = $_C.Warn
     }
     elseif ($Row.Status -eq 'Dirty-source install') {
@@ -1473,9 +1575,9 @@ function Get-ManagerActionGuidance {
         $color = $_C.Warn
     }
     elseif ($Row.WorkState -eq 'Different') {
-        $recommendation = 'Press Enter to review workspace drift'
+        $recommendation = 'Press W to update workspace'
         $reason = 'Local checkout commit differs from the latest GitHub branch commit.'
-        $gitNote = "Enter opens a WT pane. Run git fetch --prune; git status -sb; git log --oneline --left-right 'HEAD...@{u}'"
+        $gitNote = "W runs a clean fast-forward only. Enter opens review with: git log --oneline --left-right 'HEAD...@{u}'"
         $color = $_C.Warn
     }
     elseif ($Row.WorkState -eq 'No workspace') {
@@ -1755,6 +1857,7 @@ function Write-ManagerShortcutFooter {
     $actions = if ($wide) {
         @(
             [pscustomobject]@{ Key = 'U'; Text = ' update selected   ' }
+            [pscustomobject]@{ Key = 'W'; Text = ' update workspace   ' }
             [pscustomobject]@{ Key = '^U'; Text = ' update all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' install/repair selected   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' install/repair all   ' }
@@ -1764,6 +1867,7 @@ function Write-ManagerShortcutFooter {
     elseif ($Width -ge 64) {
         @(
             [pscustomobject]@{ Key = 'U'; Text = ' update   ' }
+            [pscustomobject]@{ Key = 'W'; Text = ' workspace   ' }
             [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' repair   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' repair all   ' }
@@ -1773,6 +1877,7 @@ function Write-ManagerShortcutFooter {
     else {
         @(
             [pscustomobject]@{ Key = 'U'; Text = ' upd   ' }
+            [pscustomobject]@{ Key = 'W'; Text = ' work   ' }
             [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' rep   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' all   ' }
@@ -1794,6 +1899,29 @@ function Write-ManagerShortcutFooter {
         New-ManagerShortcutSegment -Text 'Esc' -Color $_C.Fail
         New-ManagerShortcutSegment -Text ' = back' -Color $_C.Dim
     ) -Width ([Math]::Max(1, $Width - 3))
+}
+
+function Get-ManagerSelectedActionPrompt {
+    param(
+        [Parameter(Mandatory)][ValidateSet('Update','InstallRepair','WorkspaceUpdate')]$Action,
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)]$Row
+    )
+
+    $label = [string]$State.Label
+    switch ($Action) {
+        'Update' {
+            return "Update '$label' from GitHub branch '$($State.Branch)' into the installed copy?"
+        }
+        'InstallRepair' {
+            $source = if ([string]::IsNullOrWhiteSpace([string]$State.WorkspacePath)) { 'GitHub clone fallback' } else { "local workspace '$($State.WorkspacePath)'" }
+            $warning = if ($Row.WorkState -eq 'Different') { ' Workspace differs from GitHub; W or U may be safer first.' } elseif ($Row.WorkState -match 'dirty') { ' Workspace is dirty; review it first unless you mean to install dirty files.' } else { '' }
+            return "Install/repair '$label' from $source?$warning"
+        }
+        'WorkspaceUpdate' {
+            return "Fast-forward local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
+        }
+    }
 }
 
 function Write-ToolsSummaryBlock {
@@ -1896,7 +2024,7 @@ function Show-ToolsSummary {
             $char = ([string]$key.KeyChar).ToUpperInvariant()
             $hasCtrl = ([string]$key.ControlKeyState) -match 'Ctrl'
             if ($charCode -eq 21 -or ($hasCtrl -and [string]$key.Key -eq 'U')) {
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -Operation { Invoke-UpdateAll }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -ConfirmMessage 'Update all installed tools from GitHub?' -Operation { Invoke-UpdateAll }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -1904,7 +2032,7 @@ function Show-ToolsSummary {
                 continue
             }
             if ($charCode -eq 9 -or ($hasCtrl -and [string]$key.Key -eq 'I')) {
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -Operation { Invoke-InstallAll }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter -ConfirmMessage 'Install/repair all tools from local workspaces when available?' -Operation { Invoke-InstallAll }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -1914,7 +2042,18 @@ function Show-ToolsSummary {
             if ($char -eq 'U') {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -Operation { Invoke-ToolUpdate -Name $toolName }
+                $confirm = Get-ManagerSelectedActionPrompt -Action Update -State $Snapshot.States[$selected] -Row $rows[$selected]
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -Operation { Invoke-ToolUpdate -Name $toolName }
+                if ($Script:ManagerExitRequested) { return }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($char -eq 'W') {
+                $toolName = [string]$Snapshot.States[$selected].Name
+                $confirm = Get-ManagerSelectedActionPrompt -Action WorkspaceUpdate -State $Snapshot.States[$selected] -Row $rows[$selected]
+                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -Operation { Invoke-ToolWorkspaceUpdate -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -1924,7 +2063,8 @@ function Show-ToolsSummary {
             if ($char -eq 'I') {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                $confirm = Get-ManagerSelectedActionPrompt -Action InstallRepair -State $Snapshot.States[$selected] -Row $rows[$selected]
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2272,6 +2412,7 @@ switch ($Action) {
     'RepairTool' { Invoke-ToolInstallOrRepair -Name $ToolName -Repair }
     'UpdateAll' { Invoke-UpdateAll }
     'UpdateTool' { Invoke-ToolUpdate -Name $ToolName }
+    'UpdateWorkspaceTool' { Invoke-ToolWorkspaceUpdate -Name $ToolName }
     'VerifyMenu' { Invoke-VerifyMenu }
     'InspectTool' { Show-ToolInspection -Name $ToolName }
     'Surfaces' { Show-Surfaces }

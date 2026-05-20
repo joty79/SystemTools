@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-20 (Manager must separate GitHub update, workspace update, and local repair)
+
+- Date: 2026-05-20
+- Problem: In an older VM install, `Tools Summary` could recommend `I` for a tool whose menu was missing while the local workspace was behind GitHub. Pressing `I` would repair from the stale local checkout, while a later status refresh crashed in registry child enumeration under StrictMode.
+- Root cause: Menu repair guidance outranked installed/workspace drift, the manager had no direct workspace-only update shortcut, action hotkeys ran without an immediate confirmation step, and registry property checks used direct `.PSObject.Properties.Name` access that can fail for some registry provider shapes under StrictMode.
+- Guardrail/rule: Keep `U` as installed-copy GitHub update/repair, `W` as workspace-only fast-forward, and `I` as local-source install/repair. If workspace state is `Different`, recommend `U` or `W` before local repair. `U`, `W`, and `I` must ask for immediate `Y/N` confirmation without requiring Enter. Registry/property checks in manager status paths should use a safe property helper instead of direct `.Properties.Name` access.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed without registry/property crash; `MenuStructure` smoke completed without registry/property crash; `UpdateWorkspaceTool -ToolName SystemTools -NoPause` safely refused the dirty current workspace without changing installed files; synthetic guidance smoke for `Installed behind` + missing menu + different workspace recommended `U` before local repair; `git diff --check` passed.
+
 ### Entry - 2026-05-18 (Installed-behind must outrank stale dirty-source metadata)
 
 - Date: 2026-05-18

@@ -87,7 +87,7 @@ Standalone tools such as `mklink` and `ContextLens`, plus top-level surfaces suc
 .\SystemToolsManager.ps1 -Action Budgets
 ```
 
-The manager reads `.assets\systemtools-family.json`, so the managed list can grow without rewriting the manager script. Its interactive menu follows the WinAppManager-style composition: a versioned bordered banner, compact summary, colored action list, cached status snapshot, and in-place arrow-menu repaint. For local repair/install it prefers the matching repo checkout discovered from `.codex\REPO_ROOTS.psd1`; for updates it uses each installed tool's generated `Install.ps1 -Action UpdateGitHub` path and compares `state\install-meta.json` commits against GitHub `master`.
+The manager reads `.assets\systemtools-family.json`, so the managed list can grow without rewriting the manager script. Its interactive menu follows the WinAppManager-style composition: a versioned bordered banner, compact summary, colored action list, cached status snapshot, and in-place arrow-menu repaint. For local repair/install it prefers the matching repo checkout discovered from `.codex\REPO_ROOTS.psd1`; for updates it uses each installed tool's generated `Install.ps1 -Action UpdateGitHub` path and compares `state\install-meta.json` commits against GitHub `master`. The `W` shortcut fast-forwards only the selected workspace, so a stale local checkout can be updated before any local-source repair.
 
 The status table separates installed provenance from workspace state:
 
@@ -106,7 +106,7 @@ The status table separates installed provenance from workspace state:
 | `Tools Summary` | Navigable installed/workspace/remote table with selected-row guidance; Enter opens a WT Git review pane when the selected workspace needs review |
 | `Menu Structure` | Directory-tree style view grouped by human right-click targets, with monitored tools, entry visibility, menu verification, and per-popup 16-item budget status |
 
-`Tools Summary` also shows an `Actions Needed` section for the selected row. It recommends the safest next step, such as `U` for GitHub update, `I` for local install/repair, menu repair, workspace review, or no action. When a selected row needs Git review, `Enter` opens a vertical WT split pane in that tool's workspace with suggested first commands. The review pane is a normal shell; close it with `exit` or `Ctrl+Shift+W`.
+`Tools Summary` also shows an `Actions Needed` section for the selected row. It recommends the safest next step, such as `U` for GitHub update, `W` for a clean workspace fast-forward, `I` for local install/repair, menu repair, workspace review, or no action. `U`, `W`, and `I` ask for immediate `Y/N` confirmation without requiring Enter. When a selected row needs Git review, `Enter` opens a vertical WT split pane in that tool's workspace with suggested first commands. The review pane is a normal shell; close it with `exit` or `Ctrl+Shift+W`.
 
 When `WorkState` is `Current + dirty`, `Update` still uses the installed tool's GitHub update path and does not touch the local dirty workspace. `Install` / `Repair` uses the local checkout when available, so it will deploy the uncommitted workspace files and mark the installed metadata as a dirty-source install.
 
