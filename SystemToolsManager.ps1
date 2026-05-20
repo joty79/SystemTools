@@ -1,7 +1,7 @@
 #requires -version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','UpdateWorkspaceTool','VerifyMenu','InspectTool','Surfaces','MenuEntries','MenuStructure','Budgets')]
+    [ValidateSet('Menu','Status','InstallAll','InstallTool','RepairAll','RepairTool','UpdateAll','UpdateTool','UpdateWorkspaceTool','UninstallTool','VerifyMenu','InspectTool','Surfaces','MenuEntries','MenuStructure','Budgets')]
     [string]$Action = 'Menu',
     [AllowEmptyString()]
     [string]$ToolName = '',
@@ -1051,6 +1051,33 @@ function Invoke-ToolInstallOrRepair {
 
     Write-Host "$($tool.Label) install/repair completed." -ForegroundColor Green
     Remove-SystemToolsLegacyMenuKeys
+    $Script:LastManagerOperationSucceeded = $true
+}
+
+function Invoke-ToolUninstall {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $Script:LastManagerOperationSucceeded = $false
+    $tool = Get-ToolByName -Name $Name
+    $state = Get-ToolState -Tool $tool
+    if (-not $state.HasInstaller) {
+        Write-Host "$($tool.Label) is a monitored surface without an installed package." -ForegroundColor Yellow
+        return
+    }
+    if (-not $state.Installed) {
+        Write-Host "Skipping $($tool.Label): not installed." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ''
+    Write-Host "Uninstalling $($tool.Label)..." -ForegroundColor Cyan
+    $exitCode = Invoke-Installer -InstallerPath $state.InstallerPath -Arguments @('-Action', 'Uninstall', '-Force', '-NoExplorerRestart')
+    if ($exitCode -ne 0) {
+        Write-Host "$($tool.Label) uninstall failed with exit code $exitCode." -ForegroundColor Red
+        return
+    }
+
+    Write-Host "$($tool.Label) uninstall completed." -ForegroundColor Green
     $Script:LastManagerOperationSucceeded = $true
 }
 
@@ -2114,6 +2141,7 @@ function Write-ManagerShortcutFooter {
             [pscustomobject]@{ Key = '^U'; Text = ' update all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' install/repair selected   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' install/repair all   ' }
+            [pscustomobject]@{ Key = 'X'; Text = ' uninstall selected   ' }
             [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
         )
     }
@@ -2124,6 +2152,7 @@ function Write-ManagerShortcutFooter {
             [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' repair   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' repair all   ' }
+            [pscustomobject]@{ Key = 'X'; Text = ' uninstall   ' }
             [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
         )
     }
@@ -2134,6 +2163,7 @@ function Write-ManagerShortcutFooter {
             [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
             [pscustomobject]@{ Key = 'I'; Text = ' rep   ' }
             [pscustomobject]@{ Key = '^I'; Text = ' all   ' }
+            [pscustomobject]@{ Key = 'X'; Text = ' del   ' }
             [pscustomobject]@{ Key = 'R'; Text = ' ref' }
         )
     }
@@ -2156,7 +2186,7 @@ function Write-ManagerShortcutFooter {
 
 function Get-ManagerSelectedActionPrompt {
     param(
-        [Parameter(Mandatory)][ValidateSet('Update','InstallRepair','WorkspaceUpdate')]$Action,
+        [Parameter(Mandatory)][ValidateSet('Update','InstallRepair','WorkspaceUpdate','Uninstall')]$Action,
         [Parameter(Mandatory)]$State,
         [Parameter(Mandatory)]$Row
     )
@@ -2176,6 +2206,9 @@ function Get-ManagerSelectedActionPrompt {
                 return "Clone local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
             }
             return "Fast-forward local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
+        }
+        'Uninstall' {
+            return "Uninstall '$label' from the installed copy? Local workspace files will not be changed."
         }
     }
 }
@@ -2324,6 +2357,17 @@ function Show-ToolsSummary {
                 $confirm = Get-ManagerSelectedActionPrompt -Action InstallRepair -State $Snapshot.States[$selected] -Row $rows[$selected]
                 $Script:ManagerMenuSnapshot = $Snapshot
                 Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -AutoFollowRecommendations:(!$isSelfAction) -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                if ($Script:ManagerExitRequested) { return }
+                $Snapshot = $Script:ManagerMenuSnapshot
+                $rows = @($Snapshot.Rows)
+                $selected = [Math]::Min($selected, [Math]::Max(0, $rows.Count - 1))
+                continue
+            }
+            if ($char -eq 'X') {
+                $toolName = [string]$Snapshot.States[$selected].Name
+                $confirm = Get-ManagerSelectedActionPrompt -Action Uninstall -State $Snapshot.States[$selected] -Row $rows[$selected]
+                $Script:ManagerMenuSnapshot = $Snapshot
+                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolUninstall -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2672,6 +2716,7 @@ switch ($Action) {
     'UpdateAll' { Invoke-UpdateAll }
     'UpdateTool' { Invoke-ToolUpdate -Name $ToolName }
     'UpdateWorkspaceTool' { Invoke-ToolWorkspaceUpdate -Name $ToolName }
+    'UninstallTool' { Invoke-ToolUninstall -Name $ToolName }
     'VerifyMenu' { Invoke-VerifyMenu }
     'InspectTool' { Show-ToolInspection -Name $ToolName }
     'Surfaces' { Show-Surfaces }

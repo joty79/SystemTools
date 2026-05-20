@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-21 (Selected uninstall is explicit and non-chained)
+
+- Date: 2026-05-21
+- Problem: The manager could install, repair, update, and update workspaces from `Tools Summary`, but uninstall still required leaving the selected-row workflow.
+- Root cause: There was no selected-row uninstall shortcut or manager wrapper around each tool's generated `Install.ps1 -Action Uninstall` path.
+- Guardrail/rule: `X` in `Tools Summary` may uninstall only the selected installed tool after immediate `Y/N` confirmation. Treat uninstall as a terminal explicit action: refresh the selected row afterward, but do not auto-follow additional recommendations and do not modify local workspace files.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; static `X` uninstall handler smoke confirmed selected shortcut, helper, CLI action, and no auto-follow; non-destructive `UninstallTool -ToolName SafeModeOptions -NoPause` smoke completed without uninstalling anything; `git diff --check` passed.
+
 ### Entry - 2026-05-21 (Selected remediation chains can auto-follow safe next steps)
 
 - Date: 2026-05-21
