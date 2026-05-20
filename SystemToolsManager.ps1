@@ -1438,7 +1438,7 @@ function Confirm-ManagerAction {
             Write-Host 'Y' -ForegroundColor Green
             return $true
         }
-        if ($char -eq 'N' -or [string]$key.Key -eq 'Escape' -or $key.VirtualKeyCode -eq 27) {
+        if ($char -eq 'N' -or [string]$key.Key -eq 'Escape') {
             Write-Host 'N' -ForegroundColor Red
             return $false
         }

@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-20 (ConsoleKeyInfo does not expose VirtualKeyCode)
+
+- Date: 2026-05-20
+- Problem: The new `Y/N` confirmation prompt in `v1.0.50` crashed when the user pressed `N`, reporting that property `VirtualKeyCode` could not be found.
+- Root cause: The prompt used raw `[Console]::ReadKey($true)`, which returns `System.ConsoleKeyInfo`; unlike the manager's normalized `Read-ManagerKey` object, `ConsoleKeyInfo` has `Key`, `KeyChar`, and modifiers, but no `VirtualKeyCode`.
+- Guardrail/rule: Do not mix raw `[Console]::ReadKey()` results with `Read-ManagerKey` property expectations. If a helper reads raw `ConsoleKeyInfo`, test only `Key`, `KeyChar`, or `Modifiers`, or normalize it first.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; static confirmation-helper smoke confirmed `Confirm-ManagerAction` no longer references `VirtualKeyCode`; `git diff --check` passed.
+
 ### Entry - 2026-05-20 (Manager must separate GitHub update, workspace update, and local repair)
 
 - Date: 2026-05-20
