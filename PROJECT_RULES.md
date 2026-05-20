@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-21 (Clone should explain existing unusable folders)
+
+- Date: 2026-05-21
+- Problem: Pressing `W` for a missing workspace could report only `clone destination already exists but is not a usable workspace`, which did not explain whether that was dangerous or how to proceed.
+- Root cause: The clone path guard treated any existing destination as a hard stop, even when the directory was empty, and did not print the expected workspace marker files.
+- Guardrail/rule: `W` may clone into an existing empty destination folder. If the destination is non-empty but does not contain the configured workspace marker, leave it untouched and print the path, expected marker, and a clear next step to rename/empty/replace the folder.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; existing empty folder clone smoke cloned `joty79/WhoIsUsingThis` into a pre-created empty temp folder and found `Install.ps1`; existing non-empty unusable folder smoke refused clone without modifying the placeholder file; static message smoke confirmed expected-marker and recovery hint text; `git diff --check` passed.
+
 ### Entry - 2026-05-20 (Selected actions should refresh only selected row)
 
 - Date: 2026-05-20

@@ -559,8 +559,7 @@ function Get-RepoSearchRoots {
 function Resolve-ToolRepoPath {
     param([Parameter(Mandatory)]$Tool)
 
-    $markerFiles = @($Tool.WorkspaceMarkerFiles)
-    if ($markerFiles.Count -eq 0) { $markerFiles = @('Install.ps1') }
+    $markerFiles = @(Get-ToolWorkspaceMarkers -Tool $Tool)
 
     foreach ($candidate in @($Tool.LocalPaths)) {
         $path = Expand-PathToken -Path ([string]$candidate)
@@ -587,6 +586,14 @@ function Resolve-ToolRepoPath {
     return $null
 }
 
+function Get-ToolWorkspaceMarkers {
+    param([Parameter(Mandatory)]$Tool)
+
+    $markerFiles = @($Tool.WorkspaceMarkerFiles)
+    if ($markerFiles.Count -eq 0) { $markerFiles = @('Install.ps1') }
+    return $markerFiles
+}
+
 function Resolve-ToolRepoClonePath {
     param([Parameter(Mandatory)]$Tool)
 
@@ -606,6 +613,13 @@ function Resolve-ToolRepoClonePath {
     }
 
     return ''
+}
+
+function Test-DirectoryEmpty {
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return $false }
+    return $null -eq (Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
 
 function Get-ToolByName {
@@ -877,9 +891,12 @@ function Invoke-ToolWorkspaceUpdate {
             Write-Host "Skipping $($tool.Label): no clone destination could be resolved." -ForegroundColor Yellow
             return
         }
-        if (Test-Path -LiteralPath $clonePath) {
+        if ((Test-Path -LiteralPath $clonePath) -and -not (Test-DirectoryEmpty -Path $clonePath)) {
+            $markers = @(Get-ToolWorkspaceMarkers -Tool $tool)
             Write-Host "Skipping $($tool.Label): clone destination already exists but is not a usable workspace." -ForegroundColor Yellow
             Write-Host "Path: $clonePath" -ForegroundColor DarkGray
+            Write-Host ("Expected marker: {0}" -f ($markers -join ', ')) -ForegroundColor DarkGray
+            Write-Host 'Rename or empty that folder, or replace it with the real repo checkout, then press W again.' -ForegroundColor Yellow
             return
         }
 

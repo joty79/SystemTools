@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.54**: Clarified `W` clone failures when the destination folder already exists but is not a usable workspace, and allows cloning into an existing empty destination folder.
 - **Version 1.0.53**: `W` now clones the selected tool workspace from GitHub when the local repo is missing, and selected-row `U`, `W`, and `I` actions refresh only the affected tool row instead of rescanning every managed tool.
 - **Version 1.0.52**: Made stale local workspaces the first recommended action before local-source repair, blocked `I` install/repair from deploying a `Different` workspace, fixed the `Install/repair ... from ${source}?` prompt parsing bug, corrected built-in fallback verifier paths from legacy `AppsWindows` to `Windows`, and removes stale `AppsWindows` category keys after manager update/repair actions.
 - **Version 1.0.51**: Fixed the new `Y/N` confirmation prompt so pressing `N` or `Esc` no longer crashes under `[Console]::ReadKey()` with a missing `VirtualKeyCode` property.
