@@ -469,6 +469,69 @@ function Get-StatusRows {
     }
 }
 
+function New-ManagerMenuSnapshotFromParts {
+    param(
+        [Parameter(Mandatory)][object[]]$States,
+        [Parameter(Mandatory)][object[]]$Rows,
+        [object[]]$Surfaces = @(),
+        [object[]]$SystemToolsMenus = @()
+    )
+
+    $attention = @($Rows | Where-Object { $_.Menu -ne 'OK' -or $_.Status -notin @('Up to date', 'Monitored', 'Dirty-source install') })
+    $dirty = @($Rows | Where-Object { $_.Status -eq 'Dirty-source install' })
+    $installed = @($Rows | Where-Object { $_.Installed -eq 'Yes' })
+    $menuOk = @($Rows | Where-Object { $_.Menu -eq 'OK' })
+    $currentWorkspace = @($Rows | Where-Object { $_.WorkState -in @('Current', 'Current + dirty', 'No git') })
+    $standalone = @($Rows | Where-Object { $_.Scope -eq 'Standalone' })
+    $systemTools = @($Rows | Where-Object { $_.Scope -eq 'SystemTools' })
+    $statusText = ($Rows | Format-Table -AutoSize | Out-String -Width 220).TrimEnd()
+    $topIssues = @($attention | Select-Object -First 3 | ForEach-Object { '{0}: {1}' -f $_.Tool, $_.Status })
+
+    [pscustomobject]@{
+        States = $States
+        Rows = $Rows
+        Surfaces = $Surfaces
+        SystemToolsMenus = $SystemToolsMenus
+        StatusText = $statusText
+        TotalCount = $Rows.Count
+        InstalledCount = $installed.Count
+        MenuOkCount = $menuOk.Count
+        WorkspaceCurrentCount = $currentWorkspace.Count
+        StandaloneCount = $standalone.Count
+        SystemToolsCount = $systemTools.Count
+        AttentionCount = $attention.Count
+        DirtySourceCount = $dirty.Count
+        IssueSummary = if ($topIssues.Count -gt 0) { $topIssues -join '; ' } else { 'none' }
+        CheckedAt = Get-Date
+    }
+}
+
+function Update-ManagerMenuSnapshotTool {
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string]$ToolName
+    )
+
+    $states = @($Snapshot.States)
+    $rows = @($Snapshot.Rows)
+    $index = -1
+    for ($i = 0; $i -lt $states.Count; $i++) {
+        if ([string]$states[$i].Name -eq $ToolName) {
+            $index = $i
+            break
+        }
+    }
+    if ($index -lt 0) { return (New-ManagerMenuSnapshot) }
+
+    $tool = Get-ToolByName -Name $ToolName
+    $newState = Get-ToolState -Tool $tool
+    $newRow = @(Get-StatusRows -States @($newState))[0]
+    $states[$index] = $newState
+    $rows[$index] = $newRow
+
+    return New-ManagerMenuSnapshotFromParts -States $states -Rows $rows -Surfaces @($Snapshot.Surfaces) -SystemToolsMenus @($Snapshot.SystemToolsMenus)
+}
+
 function Get-RepoSearchRoots {
     $roots = [System.Collections.Generic.List[string]]::new()
     $defaultScripts = Join-Path $env:USERPROFILE 'scripts'
@@ -522,6 +585,27 @@ function Resolve-ToolRepoPath {
     }
 
     return $null
+}
+
+function Resolve-ToolRepoClonePath {
+    param([Parameter(Mandatory)]$Tool)
+
+    foreach ($candidate in @($Tool.LocalPaths)) {
+        $path = Expand-PathToken -Path ([string]$candidate)
+        if (-not [string]::IsNullOrWhiteSpace($path)) { return $path }
+    }
+
+    foreach ($root in Get-RepoSearchRoots) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$Tool.RepoFolder)) {
+            return (Join-Path $root $Tool.RepoFolder)
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$Tool.RepoFolder)) {
+        return (Join-Path (Join-Path $env:USERPROFILE 'scripts') $Tool.RepoFolder)
+    }
+
+    return ''
 }
 
 function Get-ToolByName {
@@ -783,7 +867,38 @@ function Invoke-ToolWorkspaceUpdate {
     $tool = Get-ToolByName -Name $Name
     $state = Get-ToolState -Tool $tool
     if ([string]::IsNullOrWhiteSpace([string]$state.WorkspacePath) -or -not (Test-Path -LiteralPath $state.WorkspacePath -PathType Container)) {
-        Write-Host "Skipping $($tool.Label): no local workspace found." -ForegroundColor Yellow
+        if ([string]::IsNullOrWhiteSpace([string]$tool.Repo)) {
+            Write-Host "Skipping $($tool.Label): no GitHub repo is configured." -ForegroundColor Yellow
+            return
+        }
+
+        $clonePath = Resolve-ToolRepoClonePath -Tool $tool
+        if ([string]::IsNullOrWhiteSpace($clonePath)) {
+            Write-Host "Skipping $($tool.Label): no clone destination could be resolved." -ForegroundColor Yellow
+            return
+        }
+        if (Test-Path -LiteralPath $clonePath) {
+            Write-Host "Skipping $($tool.Label): clone destination already exists but is not a usable workspace." -ForegroundColor Yellow
+            Write-Host "Path: $clonePath" -ForegroundColor DarkGray
+            return
+        }
+
+        $parent = Split-Path -Parent $clonePath
+        if (-not [string]::IsNullOrWhiteSpace($parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+
+        Write-Host ''
+        Write-Host "Cloning workspace for $($tool.Label)..." -ForegroundColor Cyan
+        Write-Host "Destination: $clonePath" -ForegroundColor DarkGray
+        & git.exe clone --branch $tool.Branch "https://github.com/$($tool.Repo).git" $clonePath
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "$($tool.Label) workspace clone failed with exit code $LASTEXITCODE." -ForegroundColor Red
+            return
+        }
+
+        Write-Host "$($tool.Label) workspace clone completed." -ForegroundColor Green
+        $Script:LastManagerOperationSucceeded = $true
         return
     }
     if ($state.WorkspaceStatus -eq 'No git') {
@@ -1001,33 +1116,7 @@ function New-ManagerMenuSnapshot {
     $rows = @(Get-StatusRows -States $states)
     $surfaces = @(Get-ToolSurfaces)
     $systemToolsMenus = @(Get-SystemToolsMenuTargets)
-    $attention = @($rows | Where-Object { $_.Menu -ne 'OK' -or $_.Status -notin @('Up to date', 'Monitored', 'Dirty-source install') })
-    $dirty = @($rows | Where-Object { $_.Status -eq 'Dirty-source install' })
-    $installed = @($rows | Where-Object { $_.Installed -eq 'Yes' })
-    $menuOk = @($rows | Where-Object { $_.Menu -eq 'OK' })
-    $currentWorkspace = @($rows | Where-Object { $_.WorkState -in @('Current', 'Current + dirty', 'No git') })
-    $standalone = @($rows | Where-Object { $_.Scope -eq 'Standalone' })
-    $systemTools = @($rows | Where-Object { $_.Scope -eq 'SystemTools' })
-    $statusText = ($rows | Format-Table -AutoSize | Out-String -Width 220).TrimEnd()
-    $topIssues = @($attention | Select-Object -First 3 | ForEach-Object { '{0}: {1}' -f $_.Tool, $_.Status })
-
-    [pscustomobject]@{
-        States = $states
-        Rows = $rows
-        Surfaces = $surfaces
-        SystemToolsMenus = $systemToolsMenus
-        StatusText = $statusText
-        TotalCount = $rows.Count
-        InstalledCount = $installed.Count
-        MenuOkCount = $menuOk.Count
-        WorkspaceCurrentCount = $currentWorkspace.Count
-        StandaloneCount = $standalone.Count
-        SystemToolsCount = $systemTools.Count
-        AttentionCount = $attention.Count
-        DirtySourceCount = $dirty.Count
-        IssueSummary = if ($topIssues.Count -gt 0) { $topIssues -join '; ' } else { 'none' }
-        CheckedAt = Get-Date
-    }
+    New-ManagerMenuSnapshotFromParts -States $states -Rows $rows -Surfaces $surfaces -SystemToolsMenus $systemToolsMenus
 }
 
 function Get-ManagerUiWidth {
@@ -1421,7 +1510,8 @@ function Invoke-ManagerExternalAction {
         [Parameter(Mandatory)][scriptblock]$Operation,
         [switch]$NoPause,
         [switch]$RelaunchManagerAfter,
-        [AllowEmptyString()][string]$ConfirmMessage = ''
+        [AllowEmptyString()][string]$ConfirmMessage = '',
+        [AllowEmptyString()][string]$RefreshToolName = ''
     )
 
     $Script:LastManagerOperationSucceeded = $false
@@ -1448,7 +1538,12 @@ function Invoke-ManagerExternalAction {
     }
 
     Show-ManagerLoading
-    $Script:ManagerMenuSnapshot = New-ManagerMenuSnapshot
+    if (-not [string]::IsNullOrWhiteSpace($RefreshToolName) -and $null -ne $Script:ManagerMenuSnapshot) {
+        $Script:ManagerMenuSnapshot = Update-ManagerMenuSnapshotTool -Snapshot $Script:ManagerMenuSnapshot -ToolName $RefreshToolName
+    }
+    else {
+        $Script:ManagerMenuSnapshot = New-ManagerMenuSnapshot
+    }
 }
 
 function Confirm-ManagerAction {
@@ -1614,9 +1709,9 @@ function Get-ManagerActionGuidance {
         $color = $_C.Warn
     }
     elseif ($Row.WorkState -eq 'No workspace') {
-        $recommendation = 'Optional: restore local repo'
+        $recommendation = 'Press W to clone workspace'
         $reason = 'Installed package can still update from GitHub, but local repair/edit source is missing.'
-        $gitNote = 'Clone the repo if you want local repair/install from source.'
+        $gitNote = 'W clones the GitHub repo to the configured local workspace path.'
         $color = $_C.Fail
     }
     elseif ($Row.WorkState -eq 'No git') {
@@ -1952,6 +2047,9 @@ function Get-ManagerSelectedActionPrompt {
             return "Install/repair '$label' from ${source}?${warning}"
         }
         'WorkspaceUpdate' {
+            if ([string]::IsNullOrWhiteSpace([string]$State.WorkspacePath)) {
+                return "Clone local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
+            }
             return "Fast-forward local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
         }
     }
@@ -2076,7 +2174,7 @@ function Show-ToolsSummary {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
                 $confirm = Get-ManagerSelectedActionPrompt -Action Update -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -Operation { Invoke-ToolUpdate -Name $toolName }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolUpdate -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2086,7 +2184,7 @@ function Show-ToolsSummary {
             if ($char -eq 'W') {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $confirm = Get-ManagerSelectedActionPrompt -Action WorkspaceUpdate -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -Operation { Invoke-ToolWorkspaceUpdate -Name $toolName }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolWorkspaceUpdate -Name $toolName }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)
@@ -2097,7 +2195,7 @@ function Show-ToolsSummary {
                 $toolName = [string]$Snapshot.States[$selected].Name
                 $isSelfAction = $toolName -eq 'SystemTools'
                 $confirm = Get-ManagerSelectedActionPrompt -Action InstallRepair -State $Snapshot.States[$selected] -Row $rows[$selected]
-                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
+                Invoke-ManagerExternalAction -NoPause:$NoPause -RelaunchManagerAfter:$isSelfAction -ConfirmMessage $confirm -RefreshToolName $toolName -Operation { Invoke-ToolInstallOrRepair -Name $toolName -Repair }
                 if ($Script:ManagerExitRequested) { return }
                 $Snapshot = $Script:ManagerMenuSnapshot
                 $rows = @($Snapshot.Rows)

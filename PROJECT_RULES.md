@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-20 (Selected actions should refresh only selected row)
+
+- Date: 2026-05-20
+- Problem: After every selected `U`, `W`, or `I` action, the manager rescanned every monitored tool, which made single-tool fixes feel slow. Missing workspaces also required the user to clone repos manually before `W` was useful.
+- Root cause: `Invoke-ManagerExternalAction` always rebuilt `New-ManagerMenuSnapshot`, and `Invoke-ToolWorkspaceUpdate` skipped `No workspace` instead of resolving a clone destination from `local_paths` or repo roots.
+- Guardrail/rule: Selected-row actions should update only the selected tool state/row and recompute summary counters from the existing snapshot. Keep full pool refresh for `R`, all-tools actions, and fallback cases. `W` should clone the configured GitHub repo into the resolved local workspace path when no usable workspace exists.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; synthetic targeted row refresh smoke confirmed only one selected `Get-ToolState` call and refreshed row values; missing-workspace clone smoke cloned `joty79/WhoIsUsingThis` into a temp folder and found `Install.ps1`; `git diff --check` passed.
+
 ### Entry - 2026-05-20 (Stale workspaces must not feed local repair)
 
 - Date: 2026-05-20
