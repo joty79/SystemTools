@@ -2136,9 +2136,9 @@ function Write-ManagerShortcutFooter {
     $actions = @(
         [pscustomobject]@{ Key = 'U'; Text = ' update   '; Color = $_C.Info }
         [pscustomobject]@{ Key = '^U'; Text = ' all   '; Color = $_C.Info }
-        [pscustomobject]@{ Key = 'W'; Text = ' workspace   '; Color = $_C.Accent }
         [pscustomobject]@{ Key = 'I'; Text = ' repair   '; Color = $_C.Gold }
         [pscustomobject]@{ Key = '^I'; Text = ' repair all   '; Color = $_C.Gold }
+        [pscustomobject]@{ Key = 'W'; Text = ' workspace   '; Color = $_C.Accent }
         [pscustomobject]@{ Key = 'X'; Text = ' uninstall   '; Color = $_C.Fail }
         [pscustomobject]@{ Key = 'R'; Text = ' refresh'; Color = $_C.OK }
     )
