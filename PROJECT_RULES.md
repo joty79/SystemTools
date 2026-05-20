@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-20 (Stale workspaces must not feed local repair)
+
+- Date: 2026-05-20
+- Problem: In the VM, tools with `WorkState = Different` could still offer or accept `I` local install/repair, which can reinstall older workspace files and reintroduce old context-menu layout such as the legacy `AppsWindows` category.
+- Root cause: Guidance treated installed/menu repair as more urgent than workspace drift, and `Invoke-ToolInstallOrRepair` trusted any resolved local workspace. A prompt string also used `$source?`, which PowerShell parsed as variable `$source?` instead of `$source` plus a literal question mark.
+- Guardrail/rule: For tools with a local workspace at a different commit than GitHub, recommend `W` before local repair. Refuse `I` local install/repair while the workspace is `Different` or `Different + dirty`; use `U` for GitHub installed-copy repair/update instead. Use `${variable}` when punctuation immediately follows a PowerShell variable in an expandable string.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `README.md`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; synthetic guidance smoke confirmed `Different` workspace recommends `W` first; prompt smoke confirmed `${source}?` renders correctly; synthetic stale-workspace local repair smoke refused `I` before invoking any installer; temporary HKCU legacy `AppsWindows` key cleanup smoke passed; `git diff --check` passed.
+
 ### Entry - 2026-05-20 (ConsoleKeyInfo does not expose VirtualKeyCode)
 
 - Date: 2026-05-20

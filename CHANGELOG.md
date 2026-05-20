@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **Version 1.0.52**: Made stale local workspaces the first recommended action before local-source repair, blocked `I` install/repair from deploying a `Different` workspace, fixed the `Install/repair ... from ${source}?` prompt parsing bug, corrected built-in fallback verifier paths from legacy `AppsWindows` to `Windows`, and removes stale `AppsWindows` category keys after manager update/repair actions.
 - **Version 1.0.51**: Fixed the new `Y/N` confirmation prompt so pressing `N` or `Esc` no longer crashes under `[Console]::ReadKey()` with a missing `VirtualKeyCode` property.
 - **Version 1.0.50**: Hardened `SystemToolsManager.ps1` status scans against StrictMode registry property-shape failures, added `W` to fast-forward the selected local workspace without changing installed files, changed stale-workspace/menu guidance to prefer GitHub update before local repair, and added immediate `Y/N` confirmation for `U`, `W`, and `I` actions.
 - **Version 1.0.49**: Corrected manager status precedence so a dirty-source install whose recorded installed commit is behind GitHub now shows `Installed behind` instead of letting stale dirty-source metadata hide the update need.

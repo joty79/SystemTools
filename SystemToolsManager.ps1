@@ -118,11 +118,11 @@ function New-DefaultFamilyConfig {
     [pscustomobject]@{
         schema_version = 1
         tools = @(
-            [pscustomobject]@{ name = 'SystemTools'; label = 'SystemTools host'; repo = 'joty79/SystemTools'; branch = 'master'; install_folder = 'SystemToolsContext'; repo_folder = 'SystemTools'; role = 'host'; order = 10; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\ToolManager') },
-            [pscustomobject]@{ name = 'TakeOwnership'; label = 'Take Ownership'; repo = 'joty79/TakeOwnership'; branch = 'master'; install_folder = 'TakeOwnershipContext'; repo_folder = 'TakeOwnership'; role = 'child'; order = 20; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\TakeOwnership') },
-            [pscustomobject]@{ name = 'WhoIsUsingThis'; label = 'Who is using this?'; repo = 'joty79/WhoIsUsingThis'; branch = 'master'; install_folder = 'WhoIsUsingThisContext'; repo_folder = 'WhoIsUsingThis'; role = 'child'; order = 30; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Explorer\shell\WhoIsUsingThis') },
-            [pscustomobject]@{ name = 'WinAppManager'; label = 'WinAppManager'; repo = 'joty79/WinAppManager'; branch = 'master'; install_folder = 'WinAppManager'; repo_folder = 'WinAppManager'; role = 'child'; order = 40; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows\shell\WinAppManager') },
-            [pscustomobject]@{ name = 'SystemCleanup'; label = 'Windows Update Cleanup'; repo = 'joty79/SystemCleanup'; branch = 'master'; install_folder = 'SystemCleanupContext'; repo_folder = 'SystemCleanup'; role = 'child'; order = 50; verify_registry_keys = @('HKCU\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows\shell\SystemCleanup') },
+            [pscustomobject]@{ name = 'SystemTools'; label = 'SystemTools host'; repo = 'joty79/SystemTools'; branch = 'master'; install_folder = 'SystemToolsContext'; repo_folder = 'SystemTools'; role = 'host'; order = 10; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\z_ToolManager') },
+            [pscustomobject]@{ name = 'TakeOwnership'; label = 'Take Ownership'; repo = 'joty79/TakeOwnership'; branch = 'master'; install_folder = 'TakeOwnershipContext'; repo_folder = 'TakeOwnership'; role = 'child'; order = 20; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Windows\shell\TakeOwnership') },
+            [pscustomobject]@{ name = 'WhoIsUsingThis'; label = 'Who is using this?'; repo = 'joty79/WhoIsUsingThis'; branch = 'master'; install_folder = 'WhoIsUsingThisContext'; repo_folder = 'WhoIsUsingThis'; role = 'child'; order = 30; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Windows\shell\WhoIsUsingThis') },
+            [pscustomobject]@{ name = 'WinAppManager'; label = 'WinAppManager'; repo = 'joty79/WinAppManager'; branch = 'master'; install_folder = 'WinAppManager'; repo_folder = 'WinAppManager'; role = 'child'; order = 40; verify_registry_keys = @('HKCU\Software\Classes\Directory\shell\SystemTools\shell\Windows\shell\WinAppManager') },
+            [pscustomobject]@{ name = 'SystemCleanup'; label = 'Windows Update Cleanup'; repo = 'joty79/SystemCleanup'; branch = 'master'; install_folder = 'SystemCleanupContext'; repo_folder = 'SystemCleanup'; role = 'child'; order = 50; verify_registry_keys = @('HKCU\Software\Classes\Directory\Background\shell\SystemTools\shell\Windows\shell\SystemCleanup') },
             [pscustomobject]@{ name = 'Firewall'; label = 'Firewall Rules'; repo = 'joty79/Firewall'; branch = 'master'; install_folder = 'FirewallContext'; repo_folder = 'Firewall'; role = 'child'; order = 60; verify_registry_keys = @('HKCU\Software\Classes\*\shell\SystemTools\shell\Windows\shell\FirewallRules') }
         )
     }
@@ -772,6 +772,7 @@ function Invoke-ToolUpdate {
         return
     }
     Write-Host "$($tool.Label) update completed." -ForegroundColor Green
+    Remove-SystemToolsLegacyMenuKeys
     $Script:LastManagerOperationSucceeded = $true
 }
 
@@ -865,6 +866,11 @@ function Invoke-ToolInstallOrRepair {
         return
     }
     $sourceRoot = Resolve-ToolRepoPath -Tool $tool
+    if ($sourceRoot -and $state.WorkspaceStatus -like 'Different*') {
+        Write-Host "$($tool.Label) install/repair skipped: local workspace is behind or different from GitHub." -ForegroundColor Yellow
+        Write-Host 'Press W to fast-forward the workspace first, or U to repair/update the installed copy from GitHub.' -ForegroundColor Yellow
+        return
+    }
     $mode = if ($state.Installed) { 'Update' } else { 'Install' }
 
     Write-Host ''
@@ -891,6 +897,7 @@ function Invoke-ToolInstallOrRepair {
     }
 
     Write-Host "$($tool.Label) install/repair completed." -ForegroundColor Green
+    Remove-SystemToolsLegacyMenuKeys
     $Script:LastManagerOperationSucceeded = $true
 }
 
@@ -937,6 +944,26 @@ function Invoke-RefreshShell {
     $refresh = Join-Path $env:LOCALAPPDATA 'SystemToolsContext\RefreshShell.ps1'
     if (Test-Path -LiteralPath $refresh) {
         & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File $refresh -NoPause
+    }
+}
+
+function Remove-SystemToolsLegacyMenuKeys {
+    $legacyKeys = @(
+        'HKCU\Software\Classes\*\shell\SystemTools\shell\AppsWindows',
+        'HKCU\Software\Classes\Directory\shell\SystemTools\shell\AppsWindows',
+        'HKCU\Software\Classes\Directory\Background\shell\SystemTools\shell\AppsWindows',
+        'HKCU\Software\Classes\DesktopBackground\Shell\SystemTools\shell\AppsWindows',
+        'HKCU\Software\Classes\exefile\shell\SystemTools\shell\AppsWindows',
+        'HKCR\*\shell\SystemTools\shell\AppsWindows',
+        'HKCR\Directory\shell\SystemTools\shell\AppsWindows',
+        'HKCR\Directory\Background\shell\SystemTools\shell\AppsWindows',
+        'HKCR\DesktopBackground\Shell\SystemTools\shell\AppsWindows',
+        'HKCR\exefile\shell\SystemTools\shell\AppsWindows'
+    )
+
+    foreach ($key in $legacyKeys) {
+        $nativePath = Convert-RegistryPathForRegExe -Path $key
+        & reg.exe delete $nativePath /f *> $null
     }
 }
 
@@ -1525,6 +1552,18 @@ function Get-ManagerActionGuidance {
             $color = $_C.Fail
         }
     }
+    elseif ($Row.WorkState -eq 'Different') {
+        $recommendation = 'Press W to update workspace first'
+        $reason = 'Local checkout is not at the GitHub branch head; local install/repair could deploy older files.'
+        $gitNote = 'W fast-forwards only the workspace. After W, use U for GitHub repair/update or I for local repair if still needed.'
+        $color = $_C.Warn
+    }
+    elseif ($Row.WorkState -eq 'Different + dirty') {
+        $recommendation = 'Press Enter to review workspace first'
+        $reason = 'Local checkout differs from GitHub and also has uncommitted changes.'
+        $gitNote = 'Review/clean the workspace before W or local repair. U can still update installed files from GitHub.'
+        $color = $_C.Warn
+    }
     elseif (-not $State.Installed) {
         $recommendation = 'Press I to install/repair selected'
         $reason = 'The package is not installed or its expected installer is missing.'
@@ -1572,12 +1611,6 @@ function Get-ManagerActionGuidance {
         $recommendation = 'Press Enter to review dirty workspace'
         $reason = 'Installed copy is current, but local checkout has uncommitted changes.'
         $gitNote = 'Enter opens a WT pane. I installs dirty local files; U installs GitHub/latest.'
-        $color = $_C.Warn
-    }
-    elseif ($Row.WorkState -eq 'Different') {
-        $recommendation = 'Press W to update workspace'
-        $reason = 'Local checkout commit differs from the latest GitHub branch commit.'
-        $gitNote = "W runs a clean fast-forward only. Enter opens review with: git log --oneline --left-right 'HEAD...@{u}'"
         $color = $_C.Warn
     }
     elseif ($Row.WorkState -eq 'No workspace') {
@@ -1915,8 +1948,8 @@ function Get-ManagerSelectedActionPrompt {
         }
         'InstallRepair' {
             $source = if ([string]::IsNullOrWhiteSpace([string]$State.WorkspacePath)) { 'GitHub clone fallback' } else { "local workspace '$($State.WorkspacePath)'" }
-            $warning = if ($Row.WorkState -eq 'Different') { ' Workspace differs from GitHub; W or U may be safer first.' } elseif ($Row.WorkState -match 'dirty') { ' Workspace is dirty; review it first unless you mean to install dirty files.' } else { '' }
-            return "Install/repair '$label' from $source?$warning"
+            $warning = if ($Row.WorkState -like 'Different*') { ' Workspace differs from GitHub; W or U should run first.' } elseif ($Row.WorkState -match 'dirty') { ' Workspace is dirty; review it first unless you mean to install dirty files.' } else { '' }
+            return "Install/repair '$label' from ${source}?${warning}"
         }
         'WorkspaceUpdate' {
             return "Fast-forward local workspace for '$label' from GitHub branch '$($State.Branch)'? Installed files will not be changed."
