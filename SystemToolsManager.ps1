@@ -2133,43 +2133,18 @@ function New-ManagerToolsSummaryLine {
 function Write-ManagerShortcutFooter {
     param([Parameter(Mandatory)][int]$Width)
 
-    $wide = $Width -ge 92
-    $actions = if ($wide) {
-        @(
-            [pscustomobject]@{ Key = 'U'; Text = ' update selected   ' }
-            [pscustomobject]@{ Key = 'W'; Text = ' update workspace   ' }
-            [pscustomobject]@{ Key = '^U'; Text = ' update all   ' }
-            [pscustomobject]@{ Key = 'I'; Text = ' install/repair selected   ' }
-            [pscustomobject]@{ Key = '^I'; Text = ' install/repair all   ' }
-            [pscustomobject]@{ Key = 'X'; Text = ' uninstall selected   ' }
-            [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
-        )
-    }
-    elseif ($Width -ge 64) {
-        @(
-            [pscustomobject]@{ Key = 'U'; Text = ' update   ' }
-            [pscustomobject]@{ Key = 'W'; Text = ' workspace   ' }
-            [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
-            [pscustomobject]@{ Key = 'I'; Text = ' repair   ' }
-            [pscustomobject]@{ Key = '^I'; Text = ' repair all   ' }
-            [pscustomobject]@{ Key = 'X'; Text = ' uninstall   ' }
-            [pscustomobject]@{ Key = 'R'; Text = ' refresh' }
-        )
-    }
-    else {
-        @(
-            [pscustomobject]@{ Key = 'U'; Text = ' upd   ' }
-            [pscustomobject]@{ Key = 'W'; Text = ' work   ' }
-            [pscustomobject]@{ Key = '^U'; Text = ' all   ' }
-            [pscustomobject]@{ Key = 'I'; Text = ' rep   ' }
-            [pscustomobject]@{ Key = '^I'; Text = ' all   ' }
-            [pscustomobject]@{ Key = 'X'; Text = ' del   ' }
-            [pscustomobject]@{ Key = 'R'; Text = ' ref' }
-        )
-    }
+    $actions = @(
+        [pscustomobject]@{ Key = 'U'; Text = ' update   '; Color = $_C.Info }
+        [pscustomobject]@{ Key = '^U'; Text = ' all   '; Color = $_C.Info }
+        [pscustomobject]@{ Key = 'W'; Text = ' workspace   '; Color = $_C.Accent }
+        [pscustomobject]@{ Key = 'I'; Text = ' repair   '; Color = $_C.Gold }
+        [pscustomobject]@{ Key = '^I'; Text = ' repair all   '; Color = $_C.Gold }
+        [pscustomobject]@{ Key = 'X'; Text = ' uninstall   '; Color = $_C.Fail }
+        [pscustomobject]@{ Key = 'R'; Text = ' refresh'; Color = $_C.OK }
+    )
 
     $actionSegments = foreach ($action in $actions) {
-        New-ManagerShortcutSegment -Text $action.Key -Color $_C.Warn
+        New-ManagerShortcutSegment -Text $action.Key -Color $action.Color
         New-ManagerShortcutSegment -Text $action.Text -Color $_C.Dim
     }
 

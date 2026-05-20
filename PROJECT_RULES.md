@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-21 (Shortcut footer stays compact and grouped)
+
+- Date: 2026-05-21
+- Problem: The `Tools Summary` footer became visually noisy at wider terminal widths, and related shortcuts such as `U`/`^U` and `I`/`^I` were separated enough to slow scanning.
+- Root cause: The footer used separate wide/medium/narrow text layouts and one shared shortcut-key color for all actions.
+- Guardrail/rule: Keep `Tools Summary` action shortcuts in a single compact layout at every width. Group selected/all pairs together (`U`, `^U`; `I`, `^I`) and color shortcut keys by action family so the line remains scannable.
+- Files affected: `SystemToolsManager.ps1`, `app-metadata.json`, `CHANGELOG.md`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `SystemToolsManager.ps1`; read-only `Status` smoke completed; static footer order/color smoke confirmed compact order `U`, `^U`, `W`, `I`, `^I`, `X`, `R` and distinct key colors; `git diff --check` passed.
+
 ### Entry - 2026-05-21 (Selected uninstall is explicit and non-chained)
 
 - Date: 2026-05-21
