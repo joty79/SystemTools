@@ -23,6 +23,20 @@
     Also delete thumbnail cache files (thumbcache*.db). Off by default because
     thumbnail rebuild can be slow on large photo libraries.
 
+.PARAMETER DiagnoseUwpPngIcons
+    Print diagnostics for the known UWP/Search generic PNG icon issue without
+    changing registry keys or deleting cache files.
+
+.PARAMETER FixUwpPngIcons
+    Remove third-party .png thumbnail shell extension registrations that can
+    make UWP/MSIX app icons appear as generic PNG file-type icons in Start
+    Menu Search. Cache cleanup still runs afterward.
+
+.PARAMETER ResetPngUserChoice
+    Also remove the current user's .png UserChoice association. Use only when
+    it points to stale/broken image viewer ProgIDs; Windows will ask for a new
+    default PNG app later.
+
 .PARAMETER NoPause
     Skip the "Press Enter to close" prompt at the end.
 
@@ -42,6 +56,9 @@
 [CmdletBinding()]
 param(
     [switch]$Thumbnails,
+    [switch]$DiagnoseUwpPngIcons,
+    [switch]$FixUwpPngIcons,
+    [switch]$ResetPngUserChoice,
     [switch]$NoPause
 )
 
@@ -53,6 +70,188 @@ $CacheDir      = "$env:LOCALAPPDATA\Microsoft\Windows\Explorer"
 $ClassicCache  = "$env:LOCALAPPDATA\IconCache.db"
 $AppIconCache  = "$env:LOCALAPPDATA\Packages\Microsoft.Windows.Search_cw5n1h2txyewy\LocalState\AppIconCache"
 $StartMenuTemp = "$env:LOCALAPPDATA\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\TempState"
+
+function Get-RegistryDefaultValue {
+    param(
+        [Parameter(Mandatory)]
+        [string]$LiteralPath
+    )
+
+    try {
+        return (Get-ItemProperty -LiteralPath $LiteralPath -ErrorAction Stop).'(default)'
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-PngShellExtensionRows {
+    $scanRoots = @(
+        [pscustomobject]@{
+            Label = 'HKCU'
+            Path = 'Registry::HKEY_CURRENT_USER\Software\Classes\.png\shellex'
+            Writable = $true
+        }
+        [pscustomobject]@{
+            Label = 'HKLM'
+            Path = 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Classes\.png\shellex'
+            Writable = $true
+        }
+        [pscustomobject]@{
+            Label = 'HKCR merged'
+            Path = 'Registry::HKEY_CLASSES_ROOT\.png\shellex'
+            Writable = $false
+        }
+    )
+
+    foreach ($scanRoot in $scanRoots) {
+        if (-not (Test-Path -LiteralPath $scanRoot.Path)) { continue }
+
+        Get-ChildItem -LiteralPath $scanRoot.Path -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            $clsid = Get-RegistryDefaultValue -LiteralPath $_.PSPath
+            $handlerName = if ($clsid) {
+                Get-RegistryDefaultValue -LiteralPath "Registry::HKEY_CLASSES_ROOT\CLSID\$clsid"
+            }
+            else {
+                $null
+            }
+
+            [pscustomobject]@{
+                Root = $scanRoot.Label
+                Path = $_.Name
+                PSPath = $_.PSPath
+                KeyName = $_.PSChildName
+                Clsid = $clsid
+                Handler = $handlerName
+                Writable = $scanRoot.Writable
+            }
+        }
+    }
+}
+
+function Show-UwpPngIconDiagnostics {
+    Write-Host ''
+    Write-Host '=== UWP/Search PNG icon diagnostics ===' -ForegroundColor Cyan
+
+    $hkcrPngDefault = Get-RegistryDefaultValue -LiteralPath 'Registry::HKEY_CLASSES_ROOT\.png'
+    $hkcuPngDefault = Get-RegistryDefaultValue -LiteralPath 'Registry::HKEY_CURRENT_USER\Software\Classes\.png'
+    $userChoice = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.png\UserChoice' -ErrorAction SilentlyContinue
+    $userChoiceProgId = if ($userChoice -and ($userChoice.PSObject.Properties.Name -contains 'ProgId')) { $userChoice.ProgId } else { $null }
+    $shellExtensionRows = @(Get-PngShellExtensionRows)
+
+    Write-Host ("  HKCR .png default    : {0}" -f $(if ($hkcrPngDefault) { $hkcrPngDefault } else { '<empty>' }))
+    Write-Host ("  HKCU .png default    : {0}" -f $(if ($hkcuPngDefault) { $hkcuPngDefault } else { '<empty>' }))
+    Write-Host ("  UserChoice ProgId    : {0}" -f $(if ($userChoiceProgId) { $userChoiceProgId } else { '<none>' }))
+
+    if ($shellExtensionRows.Count -gt 0) {
+        Write-Host '  .png shell extensions:' -ForegroundColor Yellow
+        foreach ($row in $shellExtensionRows) {
+            $handler = if ($row.Handler) { $row.Handler } else { '<unknown handler>' }
+            Write-Host ("    [{0}] {1} -> {2}" -f $row.Root, $row.KeyName, $handler) -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host '  .png shell extensions: none' -ForegroundColor Green
+    }
+
+    if (Test-Path -LiteralPath $AppIconCache) {
+        $appIconFiles = @(Get-ChildItem -LiteralPath $AppIconCache -Recurse -File -ErrorAction SilentlyContinue)
+        $sameSizeGroups = @($appIconFiles | Group-Object Length | Sort-Object Count -Descending | Select-Object -First 3)
+        Write-Host ("  Search AppIconCache  : {0} files" -f $appIconFiles.Count)
+        foreach ($group in $sameSizeGroups) {
+            Write-Host ("    Size {0}: {1} files" -f $group.Name, $group.Count) -ForegroundColor DarkGray
+        }
+    }
+    else {
+        Write-Host '  Search AppIconCache  : not found' -ForegroundColor DarkGray
+    }
+
+    $wSearch = Get-Service -Name WSearch -ErrorAction SilentlyContinue
+    if ($wSearch) {
+        Write-Host ("  Windows Search       : {0} / {1}" -f $wSearch.Status, $wSearch.StartType)
+    }
+
+    if ($shellExtensionRows.Count -gt 0) {
+        Write-Host '  Verdict              : .png shell extensions are present; use -FixUwpPngIcons if UWP Search icons show PNG file icons.' -ForegroundColor Yellow
+    }
+    elseif ($userChoiceProgId -and $userChoiceProgId -notin @('pngfile', 'AppX43hnxtbyyps62jhe9sqpdzxn1790zetc')) {
+        Write-Host '  Verdict              : no .png shell extensions found; stale UserChoice may still be worth resetting manually.' -ForegroundColor Yellow
+    }
+    else {
+        Write-Host '  Verdict              : no obvious registry trigger found.' -ForegroundColor Green
+    }
+}
+
+function Remove-PngShellExtensions {
+    $writableRows = @(Get-PngShellExtensionRows | Where-Object { $_.Writable })
+
+    Write-Host ''
+    Write-Host '=== Removing .png shell extensions ===' -ForegroundColor Cyan
+
+    if ($writableRows.Count -eq 0) {
+        Write-Host '  No writable .png shell extension keys found.' -ForegroundColor Green
+        return
+    }
+
+    foreach ($row in $writableRows) {
+        $regExePath = $row.Path -replace '^HKEY_CURRENT_USER\\', 'HKCU\' -replace '^HKEY_LOCAL_MACHINE\\', 'HKLM\'
+        try {
+            Remove-Item -LiteralPath $row.PSPath -Recurse -Force -ErrorAction Stop
+            Write-Host ("  [OK] Removed [{0}] {1}" -f $row.Root, $row.KeyName) -ForegroundColor Green
+        }
+        catch {
+            & reg.exe delete $regExePath /f *> $null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host ("  [OK] Removed [{0}] {1} via reg.exe fallback" -f $row.Root, $row.KeyName) -ForegroundColor Green
+            }
+            else {
+                Write-Host ("  [FAILED] {0}: {1}" -f $row.Path, $_.Exception.Message) -ForegroundColor Red
+            }
+        }
+    }
+}
+
+function Remove-PngUserChoice {
+    $userChoicePath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.png\UserChoice'
+
+    Write-Host ''
+    Write-Host '=== Resetting .png UserChoice ===' -ForegroundColor Cyan
+
+    if (-not (Test-Path -LiteralPath $userChoicePath)) {
+        Write-Host '  No .png UserChoice key found.' -ForegroundColor DarkGray
+        return
+    }
+
+    try {
+        Remove-Item -LiteralPath $userChoicePath -Recurse -Force -ErrorAction Stop
+        Write-Host '  [OK] Removed .png UserChoice. Pick your preferred PNG default app next time Windows asks.' -ForegroundColor Green
+    }
+    catch {
+        Write-Host ("  [FAILED] Could not remove .png UserChoice: {0}" -f $_.Exception.Message) -ForegroundColor Red
+        Write-Host '  This key can be ACL-protected. Re-run from an elevated terminal if needed.' -ForegroundColor Yellow
+    }
+}
+
+if ($DiagnoseUwpPngIcons -and -not $FixUwpPngIcons -and -not $ResetPngUserChoice) {
+    Show-UwpPngIconDiagnostics
+    if (-not $NoPause) {
+        Write-Host ''
+        Read-Host 'Press Enter to close'
+    }
+    return
+}
+
+if ($DiagnoseUwpPngIcons -or $FixUwpPngIcons -or $ResetPngUserChoice) {
+    Show-UwpPngIconDiagnostics
+}
+
+if ($FixUwpPngIcons) {
+    Remove-PngShellExtensions
+}
+
+if ($ResetPngUserChoice) {
+    Remove-PngUserChoice
+}
 
 # ─── Phase 1: Kill shell processes ──────────────────────────────────────────
 Write-Host ''
@@ -204,6 +403,14 @@ if ($totalFailed -gt 0) {
 }
 else {
     Write-Host '  All cache files cleared successfully!' -ForegroundColor Green
+}
+
+if ($FixUwpPngIcons -or $DiagnoseUwpPngIcons) {
+    Write-Host ''
+    Write-Host '=== UWP/Search icon redraw note ===' -ForegroundColor Cyan
+    Write-Host '  If only some Start Search app icons refresh immediately, force a visual redraw:' -ForegroundColor Yellow
+    Write-Host '  Settings > System > Display > Scale: change 125% -> 100%, wait a few seconds, then change back.' -ForegroundColor Yellow
+    Write-Host '  A reboot should also complete the locked-cache cleanup and redraw path.' -ForegroundColor Yellow
 }
 
 if (-not $NoPause) {

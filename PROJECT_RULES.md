@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-23 (Clear Icon Cache owns UWP Search PNG icon repair)
+
+- Date: 2026-05-23
+- Problem: UWP/MSIX apps such as Codex, Calculator, and Microsoft Store showed the same generic PNG file-type icon only in Start Menu Search.
+- Root cause: Windows Search cached package PNG logo assets after `.png` registry state was polluted by a third-party thumbnail handler. The culprit was `DriveFS Thumbnail Provider` under the real `HKCU\Software\Classes\.png\shellex` branch; `Remove-Item` failed with `Requested registry access is not allowed` even elevated, while `reg.exe delete` succeeded.
+- Guardrail/rule: Keep this repair in `Clear-IconCache.ps1`, not `RefreshShell.ps1`, because the fix requires registry diagnostics/remediation plus Search AppIconCache rebuild. For `.png\shellex` removal, scan real HKCU/HKLM branches, show diagnostics first, and use `reg.exe delete` as a fallback when the PowerShell registry provider refuses deletion. If only some Start Search app icons redraw immediately, treat the display-scale toggle as a redraw trigger, not as the root fix; document it as the manual no-reboot fallback.
+- Files affected: `Clear-IconCache.ps1`, `README.md`, `CHANGELOG.md`, `app-metadata.json`, `PROJECT_RULES.md`.
+- Validation/tests run: Parser validation passed for `Clear-IconCache.ps1`; elevated `-DiagnoseUwpPngIcons` reproduced `DriveFS Thumbnail Provider`; elevated `-FixUwpPngIcons` cleared Search AppIconCache but PowerShell provider deletion failed; direct elevated `reg.exe delete` removed the HKCU `.png\shellex` handler; script updated with `reg.exe` fallback; elevated diagnostic then showed `.png shell extensions: none`. Codex icon redrew immediately, while Calculator needed the display-scale 125% -> 100% -> 125% redraw trigger. Five iconcache database files remained locked and were scheduled through RunOnce, so reboot is still required for complete cache cleanup.
+
 ### Entry - 2026-05-21 (Shortcut footer stays compact and grouped)
 
 - Date: 2026-05-21

@@ -368,6 +368,15 @@ gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1
 # Rebuild icon + thumbnail cache
 gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -Thumbnails
 
+# Diagnose UWP/MSIX apps showing generic PNG icons in Start Search
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -DiagnoseUwpPngIcons
+
+# Remove broken .png thumbnail handlers, then rebuild Search/UWP icon caches
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -FixUwpPngIcons
+
+# Also reset a stale .png default-app UserChoice when needed
+gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -FixUwpPngIcons -ResetPngUserChoice
+
 # Silent (no pause)
 gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -NoPause
 ```
@@ -375,7 +384,12 @@ gsudo pwsh -NoProfile -File .\Clear-IconCache.ps1 -NoPause
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `-Thumbnails` | `switch` | Off | Also delete thumbnail cache (can be slow on large photo libraries) |
+| `-DiagnoseUwpPngIcons` | `switch` | Off | Inspect `.png` file association, UserChoice, shell extensions, Search AppIconCache, and Windows Search status without changing anything |
+| `-FixUwpPngIcons` | `switch` | Off | Remove third-party `.png\shellex` thumbnail handlers that can make UWP/MSIX icons render as generic PNG file-type icons in Start Search |
+| `-ResetPngUserChoice` | `switch` | Off | Also remove the current user's `.png` UserChoice association; use only when it points to a stale or unwanted image viewer ProgID |
 | `-NoPause` | `switch` | Off | Skip `Press Enter to close` prompt |
+
+If only some Start Search app icons redraw immediately after `-FixUwpPngIcons`, use the same visual redraw trigger Windows responds to manually: Settings → System → Display → Scale, change 125% → 100%, wait a few seconds, then change back. A reboot should also complete locked-cache cleanup when the script reports RunOnce scheduling.
 
 ---
 
