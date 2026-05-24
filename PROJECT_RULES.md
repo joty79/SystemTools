@@ -14,6 +14,15 @@
 
 ## Decision Log
 
+### Entry - 2026-05-24 (WhoIsUsingThis host artifact icon alignment)
+
+- Date: 2026-05-24
+- Problem: `WhoIsUsingThis` context-menu icon values were split between `imageres.dll,-102`, the old installed `WhoIsUsingThis.ico`, and the requested `Documents\Icons\whoisusingthis.ico` artwork.
+- Root cause: The child InstallerCore profile had not imported the newer artwork, and the host `SystemToolsMenu.reg` still carried stale fallback/old installed icon values.
+- Guardrail/rule: Host registry artifacts should mirror child-owned icon filenames after downstream regeneration. For `WhoIsUsingThis`, use the installed `assets\icons\whoisusingthis-custom.ico` copy that was imported from the requested Documents icon.
+- Files affected: `SystemToolsMenu.reg`, `CHANGELOG.md`, `PROJECT_RULES.md`, downstream `WhoIsUsingThis`, `D:\Users\joty79\scripts\InstallerCore\profiles\WhoIsUsingThis.json`.
+- Validation/tests run: Downstream local-source update completed; HKCU readback confirmed all four active `WhoIsUsingThis` icon values point to installed `assets\icons\whoisusingthis-custom.ico`; imported icon hash matched the requested Documents icon.
+
 ### Entry - 2026-05-23 (Clear Icon Cache owns UWP Search PNG icon repair)
 
 - Date: 2026-05-23

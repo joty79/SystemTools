@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Template-Based Installer**: Added a new profile/template generation workflow for generating `Install.ps1` files.
 
 ### Changed
+- **WhoIsUsingThis icon source**: Updated the host registry artifact so `Who is using this?` points at the refreshed installed `assets\icons\whoisusingthis-custom.ico` artwork instead of the old DLL fallback or stale installed icon filename.
 - **Version 1.0.58**: Added `Clear-IconCache.ps1` UWP/Search PNG icon diagnostics and repair switches for the recurring Start Search generic PNG icon issue. The repair removes third-party `.png\shellex` thumbnail handlers before rebuilding the Search AppIconCache, while `.png` UserChoice reset remains an explicit opt-in switch. The script now also calls out the manual display-scale redraw trigger when Start Search refreshes only some app icons immediately.
 - **Version 1.0.57**: Cleaned up the `Tools Summary` shortcut footer with one compact layout at every width, grouped `U`/`^U` and `I`/`^I` together, and color-coded shortcut keys by action family.
 - **Version 1.0.56**: Added `X` in `Tools Summary` to uninstall the selected installed tool after an immediate `Y/N` confirmation, refreshing only that selected row afterward.
